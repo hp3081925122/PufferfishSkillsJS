@@ -9,6 +9,7 @@
     "SkillsModMixin"
   ],
   "client": [
+    "SkillsScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

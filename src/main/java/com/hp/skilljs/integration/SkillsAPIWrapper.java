@@ -33,7 +33,7 @@ public class SkillsAPIWrapper {
         return resolveCategory(categoryId).map(CategoryWrapper::new);
     }
 
-    public Optional<CategoryWrapper> getCategory(ResourceLocation categoryId) {
+    public Optional<CategoryWrapper> getCategoryByResourceLocation(ResourceLocation categoryId) {
         return SkillsAPI.getCategory(categoryId).map(CategoryWrapper::new);
     }
 

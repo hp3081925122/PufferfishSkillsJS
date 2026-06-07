@@ -1,16 +1,21 @@
 package com.hp.skilljs.integration;
 
+import com.hp.skilljs.client.RepeatableSkillClientCache;
 import com.hp.skilljs.mixin.SkillsModAccessor;
+import com.hp.skilljs.network.PufferfishSkillsJSNetwork;
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.SkillsMod;
 import net.puffish.skillsmod.config.CategoryConfig;
+import net.puffish.skillsmod.config.skill.SkillConfig;
 import net.puffish.skillsmod.server.data.CategoryData;
 import net.puffish.skillsmod.server.data.PlayerData;
 import net.puffish.skillsmod.server.network.packets.out.PointsUpdateOutPacket;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public final class RepeatableSkillSupport {
@@ -83,5 +88,33 @@ public final class RepeatableSkillSupport {
             player,
             new PointsUpdateOutPacket(categoryId, spentPoints, categoryData.getPointsTotal())
         );
+    }
+
+    public static void syncRepeatableState(ServerPlayer player, CategoryConfig categoryConfig) {
+        Map<String, RepeatableSkillClientCache.Entry> entries = new LinkedHashMap<>();
+        for (SkillConfig skillConfig : categoryConfig.skills().getAll()) {
+            if (!SkillTypeRegistry.isRepeatable(categoryConfig.id(), skillConfig.id())) {
+                continue;
+            }
+
+            entries.put(
+                skillConfig.id(),
+                new RepeatableSkillClientCache.Entry(
+                    true,
+                    RepeatableSkillData.getRepeatCount(player, categoryConfig.id(), skillConfig.id()),
+                    RepeatableSkillData.getRepeatLimit(categoryConfig.id(), skillConfig.id())
+                )
+            );
+        }
+
+        PufferfishSkillsJSNetwork.syncCategory(player, categoryConfig.id(), entries);
+    }
+
+    public static void syncRepeatableState(ServerPlayer player, ResourceLocation categoryId) {
+        getCategoryConfig(categoryId).ifPresent(categoryConfig -> syncRepeatableState(player, categoryConfig));
+    }
+
+    public static void clearRepeatableState(ServerPlayer player, ResourceLocation categoryId) {
+        PufferfishSkillsJSNetwork.syncCategory(player, categoryId, Map.of());
     }
 }

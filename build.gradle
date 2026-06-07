@@ -144,6 +144,20 @@ repositories {
     maven { url = "https://www.cursemaven.com" }
 }
 
+configurations {
+    runtimeModJars {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+def runtimeModDependencies = [
+    "curse.maven:puffish-skills-835091:7672794",
+    "curse.maven:kubejs-238086:5853326",
+    "curse.maven:architectury-api-419699:5137938",
+    "curse.maven:rhino-416294:6186971"
+]
+
 dependencies {
     // Specify the version of Minecraft to use.
     // Any artifact can be supplied so long as it has a "userdev" classifier artifact and is a compatible patcher artifact.
@@ -169,10 +183,10 @@ dependencies {
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
-    implementation fg.deobf("curse.maven:puffish-skills-835091:7672794")
-    implementation fg.deobf("curse.maven:kubejs-238086:5853326")
-    implementation fg.deobf("curse.maven:architectury-api-419699:5194187")
-    implementation fg.deobf("curse.maven:rhino-416294:6186971")
+    runtimeModDependencies.each { notation ->
+        implementation fg.deobf(notation)
+        runtimeModJars fg.deobf(notation)
+    }
 
 }
 
@@ -212,4 +226,14 @@ tasks.named('jar', Jar).configure {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
+
+tasks.register('syncRunMods', Sync) {
+    from(configurations.runtimeModJars)
+    into(layout.projectDirectory.dir('run/mods'))
+    includeEmptyDirs = false
+}
+
+tasks.matching { it.name.startsWith('prepareRun') }.configureEach {
+    dependsOn(tasks.named('syncRunMods'))
 }
