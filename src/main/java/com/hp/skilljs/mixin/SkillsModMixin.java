@@ -12,10 +12,13 @@ import net.puffish.skillsmod.SkillsMod;
 import net.puffish.skillsmod.config.CategoryConfig;
 import net.puffish.skillsmod.config.skill.SkillConfig;
 import net.puffish.skillsmod.config.skill.SkillDefinitionConfig;
+import net.puffish.skillsmod.config.skill.SkillRewardConfig;
+import net.puffish.skillsmod.impl.rewards.RewardUpdateContextImpl;
 import net.puffish.skillsmod.server.data.CategoryData;
 import net.puffish.skillsmod.server.data.PlayerData;
 import net.puffish.skillsmod.server.network.ServerPacketSender;
 import net.puffish.skillsmod.server.network.packets.out.PointsUpdateOutPacket;
+import net.puffish.skillsmod.server.setup.ServerPlatform;
 import com.hp.skilljs.PufferfishSkillsKubeJSPlugin;
 import com.hp.skilljs.event.CategoryLockEventJS;
 import com.hp.skilljs.event.CategoryUnlockEventJS;
@@ -29,7 +32,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.Collection;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 @Mixin(value = SkillsMod.class, remap = false)
 public abstract class SkillsModMixin {
@@ -43,16 +48,119 @@ public abstract class SkillsModMixin {
     @Final
     private ServerPacketSender packetSender;
 
+    @Shadow
+    @Final
+    private ServerPlatform platform;
+
+    @Shadow
+    protected abstract Collection<CategoryConfig> getAllCategories();
+
+    @Shadow
+    protected abstract Optional<CategoryData> getCategoryDataIfUnlocked(ServerPlayer player, CategoryConfig categoryConfig);
+
     @Unique
     private void skilljs$syncRepeatablePoints(ServerPlayer player, CategoryConfig categoryConfig, CategoryData categoryData) {
+        int baseSpent = categoryData.getSpentPoints(categoryConfig);
+        int extraSpent = RepeatableSkillData.getExtraSpentPoints(player, categoryConfig);
+        int effectiveSpent = baseSpent + extraSpent;
         this.packetSender.send(
             player,
             new PointsUpdateOutPacket(
                 categoryConfig.id(),
-                RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, categoryData),
+                effectiveSpent,
                 categoryData.getPointsTotal()
             )
         );
+    }
+
+    @Unique
+    private int skilljs$getEffectiveUnlockedCount(
+        ServerPlayer player,
+        CategoryConfig categoryConfig,
+        CategoryData categoryData,
+        String definitionId
+    ) {
+        int count = 0;
+        for (SkillConfig skillConfig : categoryConfig.skills().getAll()) {
+            if (!definitionId.equals(skillConfig.definitionId()) || !categoryData.getUnlockedSkillIds().contains(skillConfig.id())) {
+                continue;
+            }
+
+            if (SkillTypeRegistry.isRepeatable(categoryConfig.id(), skillConfig.id())) {
+                count += Math.max(1, RepeatableSkillData.getRepeatCount(player, categoryConfig.id(), skillConfig.id()));
+            } else {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    @Unique
+    private void skilljs$updateDefinitionRewards(
+        ServerPlayer player,
+        CategoryConfig categoryConfig,
+        CategoryData categoryData,
+        SkillDefinitionConfig definition,
+        boolean action,
+        Predicate<SkillRewardConfig> rewardFilter
+    ) {
+        int count = this.skilljs$getEffectiveUnlockedCount(player, categoryConfig, categoryData, definition.id());
+        definition.rewards().stream()
+            .filter(rewardFilter)
+            .forEach(reward -> reward.instance().update(new RewardUpdateContextImpl(player, count, action)));
+    }
+
+    @Inject(method = "updateRewards(Lnet/minecraft/server/level/ServerPlayer;Ljava/util/function/Predicate;)V", at = @At("HEAD"), cancellable = true, remap = false)
+    private void onUpdateRewards(ServerPlayer player, Predicate<SkillRewardConfig> rewardFilter, CallbackInfo ci) {
+        if (this.platform.isFakePlayer(player)) {
+            ci.cancel();
+            return;
+        }
+
+        for (CategoryConfig categoryConfig : this.getAllCategories()) {
+            this.getCategoryDataIfUnlocked(player, categoryConfig).ifPresent(categoryData -> {
+                for (SkillDefinitionConfig definition : categoryConfig.definitions().getAll()) {
+                    this.skilljs$updateDefinitionRewards(player, categoryConfig, categoryData, definition, false, rewardFilter);
+                }
+            });
+        }
+
+        ci.cancel();
+    }
+
+    @Inject(
+        method = "updateRewards(Lnet/minecraft/server/level/ServerPlayer;Lnet/puffish/skillsmod/config/CategoryConfig;Lnet/puffish/skillsmod/server/data/CategoryData;)V",
+        at = @At("HEAD"),
+        cancellable = true,
+        remap = false
+    )
+    private void onUpdateCategoryRewards(ServerPlayer player, CategoryConfig categoryConfig, CategoryData categoryData, CallbackInfo ci) {
+        for (SkillDefinitionConfig definition : categoryConfig.definitions().getAll()) {
+            this.skilljs$updateDefinitionRewards(player, categoryConfig, categoryData, definition, false, reward -> true);
+        }
+
+        ci.cancel();
+    }
+
+    @Inject(
+        method = "updateSkillRewards",
+        at = @At("HEAD"),
+        cancellable = true,
+        remap = false
+    )
+    private void onUpdateSkillRewards(
+        ServerPlayer player,
+        CategoryConfig categoryConfig,
+        CategoryData categoryData,
+        SkillConfig skillConfig,
+        boolean action,
+        CallbackInfo ci
+    ) {
+        categoryConfig.definitions()
+            .getById(skillConfig.definitionId())
+            .ifPresent(definition -> this.skilljs$updateDefinitionRewards(player, categoryConfig, categoryData, definition, action, reward -> true));
+        ci.cancel();
     }
 
     @Inject(method = "tryUnlockSkill", at = @At("HEAD"), cancellable = true, remap = false)
@@ -181,6 +289,9 @@ public abstract class SkillsModMixin {
 
     @Inject(method = "showCategory", at = @At("TAIL"), remap = false)
     private void onShowCategory(ServerPlayer player, CategoryConfig categoryConfig, CategoryData categoryData, CallbackInfo ci) {
+        if (RepeatableSkillData.getExtraSpentPoints(player, categoryConfig) > 0) {
+            this.skilljs$syncRepeatablePoints(player, categoryConfig, categoryData);
+        }
         RepeatableSkillSupport.syncRepeatableState(player, categoryConfig);
     }
 }

@@ -1,0 +1,5 @@
+{
+  "tooltip.pufferfishskillsjs.repeatable.available": "Can be upgraded multiple times",
+  "tooltip.pufferfishskillsjs.repeatable.remaining.unlimited": "Remaining upgrades: Unlimited",
+  "tooltip.pufferfishskillsjs.repeatable.remaining.limited": "Remaining upgrades: %s"
+}

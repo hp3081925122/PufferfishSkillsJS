@@ -1,0 +1,5 @@
+{
+  "tooltip.pufferfishskillsjs.repeatable.available": "可多次加点",
+  "tooltip.pufferfishskillsjs.repeatable.remaining.unlimited": "剩余可加次数：不限制",
+  "tooltip.pufferfishskillsjs.repeatable.remaining.limited": "剩余可加次数：%s"
+}

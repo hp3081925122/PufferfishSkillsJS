@@ -2,6 +2,7 @@ package com.hp.skilljs;
 
 import dev.latvian.mods.kubejs.KubeJSPlugin;
 import dev.latvian.mods.kubejs.event.EventGroup;
+import dev.latvian.mods.kubejs.event.EventGroupWrapper;
 import dev.latvian.mods.kubejs.event.EventHandler;
 import dev.latvian.mods.kubejs.script.BindingsEvent;
 import com.hp.skilljs.event.CategoryLockEventJS;
@@ -32,6 +33,7 @@ public class PufferfishSkillsKubeJSPlugin extends KubeJSPlugin {
 
     @Override
     public void registerBindings(BindingsEvent event) {
+        event.add("PufferfishSkillsEvents", new EventGroupWrapper(event.getType(), EVENTS));
         event.add("PufferfishSkills", new SkillsAPIWrapper());
         event.add("RepeatableSkills", new RepeatableSkillAPIWrapper());
         event.add("SkillExperience", new ExperienceAPIWrapper());

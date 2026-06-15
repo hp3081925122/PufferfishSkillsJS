@@ -124,21 +124,21 @@ public abstract class SkillsScreenMixin extends Screen {
         }
 
         tooltipLines.add(Component.empty().getVisualOrderText());
-        tooltipLines.add(this.skilljs$tooltipLine("可多次加点", ChatFormatting.GOLD));
+        tooltipLines.add(this.skilljs$tooltipLine(Component.translatable("tooltip.pufferfishskillsjs.repeatable.available"), ChatFormatting.GOLD));
 
         int remainingRepeats = entry.remainingRepeats();
         if (remainingRepeats < 0) {
-            tooltipLines.add(this.skilljs$tooltipLine("剩余可加次数：不限制", ChatFormatting.AQUA));
+            tooltipLines.add(this.skilljs$tooltipLine(Component.translatable("tooltip.pufferfishskillsjs.repeatable.remaining.unlimited"), ChatFormatting.AQUA));
         } else {
-            tooltipLines.add(this.skilljs$tooltipLine("剩余可加次数：" + remainingRepeats, ChatFormatting.AQUA));
+            tooltipLines.add(this.skilljs$tooltipLine(Component.translatable("tooltip.pufferfishskillsjs.repeatable.remaining.limited", remainingRepeats), ChatFormatting.AQUA));
         }
 
         this.setTooltipForNextRenderPass(tooltipLines);
     }
     @Unique
-    private FormattedCharSequence skilljs$tooltipLine(String text, ChatFormatting color) {
-        MutableComponent component = Component.literal(text).withStyle(color);
-        return Tooltip.splitTooltip(this.minecraft, component).get(0);
+    private FormattedCharSequence skilljs$tooltipLine(Component component, ChatFormatting color) {
+        MutableComponent styledComponent = component.copy().withStyle(color);
+        return Tooltip.splitTooltip(this.minecraft, styledComponent).get(0);
     }
 
     @Unique
