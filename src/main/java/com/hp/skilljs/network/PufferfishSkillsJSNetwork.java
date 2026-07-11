@@ -37,9 +37,31 @@ public final class PufferfishSkillsJSNetwork {
             RepeatableSkillSyncPacket::decode,
             RepeatableSkillSyncPacket::handle
         );
+        CHANNEL.registerMessage(
+            1,
+            UnlockableSkillSyncPacket.class,
+            UnlockableSkillSyncPacket::encode,
+            UnlockableSkillSyncPacket::decode,
+            UnlockableSkillSyncPacket::handle
+        );
+        CHANNEL.registerMessage(
+            2,
+            SkillScreenClosePacket.class,
+            SkillScreenClosePacket::encode,
+            SkillScreenClosePacket::decode,
+            SkillScreenClosePacket::handle
+        );
     }
 
     public static void syncCategory(ServerPlayer player, ResourceLocation categoryId, Map<String, RepeatableSkillClientCache.Entry> entries) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new RepeatableSkillSyncPacket(categoryId, entries));
+    }
+
+    public static void syncUnlockableCategory(ServerPlayer player, ResourceLocation categoryId, java.util.Set<String> skillIds) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new UnlockableSkillSyncPacket(categoryId, skillIds));
+    }
+
+    public static void sendSkillScreenClose() {
+        CHANNEL.sendToServer(new SkillScreenClosePacket());
     }
 }

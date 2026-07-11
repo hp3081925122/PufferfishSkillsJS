@@ -2,6 +2,7 @@ package com.hp.skilljs.integration;
 
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
+import com.hp.skilljs.unlockable.UnlockableSkillSupport;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.api.Category;
@@ -253,6 +254,14 @@ public class SkillsAPIWrapper {
 
     public boolean repeatUnlockSkill(ServerPlayer player, String categoryId, String skillId) {
         return RepeatableSkillSupport.tryRepeatUnlock(player, parseResourceLocation(categoryId), skillId);
+    }
+
+    public boolean allowSkillUnlock(ServerPlayer player, String categoryId, String skillId) {
+        return UnlockableSkillSupport.allowSkillUnlock(player, parseResourceLocation(categoryId), skillId);
+    }
+
+    public boolean disallowSkillUnlock(ServerPlayer player, String categoryId, String skillId) {
+        return UnlockableSkillSupport.disallowSkillUnlock(player, parseResourceLocation(categoryId), skillId);
     }
 
     public int getExperienceLevel(ServerPlayer player, String categoryId) {

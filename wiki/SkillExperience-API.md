@@ -45,6 +45,9 @@ let requiredTotal = SkillExperience.getRequiredTotalForLevel('puffish_skills:com
 // 设置总经验值
 SkillExperience.setTotalExperience(player, 'puffish_skills:combat', 1000)
 
+// 设置总经验值的简写别名
+SkillExperience.setExperience(player, 'puffish_skills:combat', 1000)
+
 // 添加经验值
 SkillExperience.addExperience(player, 'puffish_skills:combat', 100)
 

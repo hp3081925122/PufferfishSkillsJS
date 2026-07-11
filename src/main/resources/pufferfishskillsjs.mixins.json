@@ -5,10 +5,12 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "pufferfishskillsjs.refmap.json",
   "mixins": [
+    "AttributeRewardMixin",
     "SkillsModAccessor",
     "SkillsModMixin"
   ],
   "client": [
+    "ScreenMixin",
     "SkillsScreenMixin"
   ],
   "injectors": {

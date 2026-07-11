@@ -26,6 +26,10 @@ public class ExperienceAPIWrapper {
         getExperience(categoryId).ifPresent(exp -> exp.setTotal(player, amount));
     }
 
+    public void setExperience(ServerPlayer player, String categoryId, int amount) {
+        setTotalExperience(player, categoryId, amount);
+    }
+
     public void addExperience(ServerPlayer player, String categoryId, int amount) {
         getExperience(categoryId).ifPresent(exp -> exp.addTotal(player, amount));
     }

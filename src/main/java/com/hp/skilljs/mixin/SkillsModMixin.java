@@ -5,9 +5,12 @@ import com.hp.skilljs.integration.RepeatableSkillSupport;
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import com.hp.skilljs.repeatable.RepeatableSkillRewards;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
+import com.hp.skilljs.unlockable.UnlockableSkillData;
+import com.hp.skilljs.unlockable.UnlockableSkillSupport;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.nbt.CompoundTag;
+import net.puffish.skillsmod.api.Skill;
 import net.puffish.skillsmod.SkillsMod;
 import net.puffish.skillsmod.config.CategoryConfig;
 import net.puffish.skillsmod.config.skill.SkillConfig;
@@ -18,6 +21,7 @@ import net.puffish.skillsmod.server.data.CategoryData;
 import net.puffish.skillsmod.server.data.PlayerData;
 import net.puffish.skillsmod.server.network.ServerPacketSender;
 import net.puffish.skillsmod.server.network.packets.out.PointsUpdateOutPacket;
+import net.puffish.skillsmod.server.network.packets.out.SkillUpdateOutPacket;
 import net.puffish.skillsmod.server.setup.ServerPlatform;
 import com.hp.skilljs.PufferfishSkillsKubeJSPlugin;
 import com.hp.skilljs.event.CategoryLockEventJS;
@@ -30,6 +34,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Collection;
@@ -182,6 +187,17 @@ public abstract class SkillsModMixin {
 
         CategoryData categoryData = playerData.getOrCreateCategoryData(categoryConfig.get());
         if (!categoryData.getUnlockedSkillIds().contains(skillId)) {
+            if (UnlockableSkillSupport.canUnlockAllowedSkill(player, categoryConfig.get(), categoryData, skillConfig.get())) {
+                categoryData.unlockSkill(skillId);
+                this.packetSender.send(player, new SkillUpdateOutPacket(categoryId, skillId, true));
+                this.skilljs$syncRepeatablePoints(player, categoryConfig.get(), categoryData);
+                SkillsMod.SKILL_UNLOCK.invoker().onSkillUnlock(categoryId, skillId);
+                this.onSkillUnlock(categoryData, skillId, player, categoryId, categoryConfig.get(), ci);
+                this.onUpdateSkillRewards(player, categoryConfig.get(), categoryData, skillConfig.get(), true, ci);
+                ci.cancel();
+                return;
+            }
+
             if (RepeatableSkillData.getExtraSpentPoints(player, categoryConfig.get()) <= 0) {
                 return;
             }
@@ -208,11 +224,37 @@ public abstract class SkillsModMixin {
         }
 
         int repeatCount = RepeatableSkillData.incrementRepeatCount(player, categoryId, skillId);
-        RepeatableSkillRewards.update(player, categoryConfig.get(), skillConfig.get(), repeatCount, action);
+        RepeatableSkillRewards.update(player, categoryConfig.get(), skillConfig.get(), repeatCount, true);
         PufferfishSkillsKubeJSPlugin.SKILL_REPEAT_UNLOCK.post(new SkillRepeatUnlockEventJS(player, categoryId, skillId, repeatCount));
         this.skilljs$syncRepeatablePoints(player, categoryConfig.get(), categoryData);
         RepeatableSkillSupport.syncRepeatableState(player, categoryConfig.get());
         ci.cancel();
+    }
+
+    @Inject(method = "lambda$getSkillState$52", at = @At("RETURN"), cancellable = true, remap = false)
+    private void onGetAllowedSkillState(
+        ServerPlayer player,
+        CategoryConfig categoryConfig,
+        SkillConfig skillConfig,
+        SkillDefinitionConfig definition,
+        CallbackInfoReturnable<Skill.State> cir
+    ) {
+        Skill.State original = cir.getReturnValue();
+        if (original != Skill.State.LOCKED || !UnlockableSkillData.isAllowed(player, categoryConfig.id(), skillConfig.id())) {
+            return;
+        }
+
+        if (RepeatableSkillData.getEffectivePointsLeft(player, categoryConfig, this.getPlayerData(player).getOrCreateCategoryData(categoryConfig)) < Math.max(definition.requiredPoints(), definition.cost())) {
+            cir.setReturnValue(Skill.State.AVAILABLE);
+            return;
+        }
+
+        if (RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, this.getPlayerData(player).getOrCreateCategoryData(categoryConfig)) < definition.requiredSpentPoints()) {
+            cir.setReturnValue(Skill.State.AVAILABLE);
+            return;
+        }
+
+        cir.setReturnValue(Skill.State.AFFORDABLE);
     }
 
     @Unique
@@ -232,6 +274,7 @@ public abstract class SkillsModMixin {
 
     @Inject(method = "lambda$tryUnlockSkill$20", at = @At(value = "INVOKE", target = "Lnet/puffish/skillsmod/server/data/CategoryData;unlockSkill(Ljava/lang/String;)V", shift = At.Shift.AFTER), remap = false)
     private void onSkillUnlock(CategoryData categoryData, String skillId, ServerPlayer player, ResourceLocation categoryId, CategoryConfig categoryConfig, CallbackInfo ci) {
+        UnlockableSkillSupport.clearSkill(player, categoryId, skillId);
         if (SkillTypeRegistry.isRepeatable(categoryId, skillId)) {
             RepeatableSkillData.ensureInitialUnlock(player, categoryId, skillId);
             RepeatableSkillSupport.syncRepeatableState(player, categoryConfig);
@@ -241,6 +284,7 @@ public abstract class SkillsModMixin {
 
     @Inject(method = "lockSkill", at = @At("TAIL"), remap = false)
     private void onSkillLock(ServerPlayer player, ResourceLocation categoryId, String skillId, CallbackInfo ci) {
+        UnlockableSkillSupport.clearSkill(player, categoryId, skillId);
         RepeatableSkillData.clearSkill(player, categoryId, skillId);
         RepeatableSkillSupport.syncRepeatableState(player, categoryId);
         PufferfishSkillsKubeJSPlugin.SKILL_LOCK.post(new SkillLockEventJS(player, categoryId, skillId));
@@ -253,19 +297,21 @@ public abstract class SkillsModMixin {
 
     @Inject(method = "lockCategory", at = @At("TAIL"), remap = false)
     private void onCategoryLock(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
-        RepeatableSkillData.clearCategory(player, categoryId);
+        UnlockableSkillSupport.clearCategory(player, categoryId);
         RepeatableSkillSupport.clearRepeatableState(player, categoryId);
         PufferfishSkillsKubeJSPlugin.CATEGORY_LOCK.post(new CategoryLockEventJS(player, categoryId));
     }
 
     @Inject(method = "resetSkills", at = @At("TAIL"), remap = false)
     private void onResetSkills(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
+        UnlockableSkillSupport.clearCategory(player, categoryId);
         RepeatableSkillData.clearCategory(player, categoryId);
         RepeatableSkillSupport.syncRepeatableState(player, categoryId);
     }
 
     @Inject(method = "eraseCategory", at = @At("TAIL"), remap = false)
     private void onEraseCategory(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
+        UnlockableSkillSupport.clearCategory(player, categoryId);
         RepeatableSkillData.clearCategory(player, categoryId);
         RepeatableSkillSupport.clearRepeatableState(player, categoryId);
     }
@@ -292,6 +338,7 @@ public abstract class SkillsModMixin {
         if (RepeatableSkillData.getExtraSpentPoints(player, categoryConfig) > 0) {
             this.skilljs$syncRepeatablePoints(player, categoryConfig, categoryData);
         }
+        UnlockableSkillSupport.syncCategory(player, categoryConfig.id());
         RepeatableSkillSupport.syncRepeatableState(player, categoryConfig);
     }
 }

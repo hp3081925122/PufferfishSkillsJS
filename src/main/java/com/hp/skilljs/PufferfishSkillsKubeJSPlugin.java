@@ -9,6 +9,7 @@ import com.hp.skilljs.event.CategoryLockEventJS;
 import com.hp.skilljs.event.CategoryUnlockEventJS;
 import com.hp.skilljs.event.SkillLockEventJS;
 import com.hp.skilljs.event.SkillRepeatUnlockEventJS;
+import com.hp.skilljs.event.SkillScreenCloseEventJS;
 import com.hp.skilljs.event.SkillUnlockEventJS;
 import com.hp.skilljs.integration.CategoryWrapper;
 import com.hp.skilljs.integration.ExperienceAPIWrapper;
@@ -25,6 +26,7 @@ public class PufferfishSkillsKubeJSPlugin extends KubeJSPlugin {
     public static final EventHandler SKILL_LOCK = EVENTS.server("skillLock", () -> SkillLockEventJS.class);
     public static final EventHandler CATEGORY_UNLOCK = EVENTS.server("categoryUnlock", () -> CategoryUnlockEventJS.class);
     public static final EventHandler CATEGORY_LOCK = EVENTS.server("categoryLock", () -> CategoryLockEventJS.class);
+    public static final EventHandler SKILL_SCREEN_CLOSE = EVENTS.server("skillScreenClose", () -> SkillScreenCloseEventJS.class);
 
     @Override
     public void registerEvents() {

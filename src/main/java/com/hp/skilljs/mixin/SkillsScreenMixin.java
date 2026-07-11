@@ -1,6 +1,7 @@
 package com.hp.skilljs.mixin;
 
 import com.hp.skilljs.client.RepeatableSkillClientCache;
+import com.hp.skilljs.client.UnlockableSkillClientCache;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
@@ -53,15 +54,23 @@ public abstract class SkillsScreenMixin extends Screen {
             target = "Lnet/puffish/skillsmod/client/data/ClientCategoryData;getSkillState(Lnet/puffish/skillsmod/client/config/skill/ClientSkillConfig;)Lnet/puffish/skillsmod/api/Skill$State;"
         )
     )
-    private Skill.State onGetRepeatableSkillState(ClientCategoryData categoryData, ClientSkillConfig skillConfig) {
+    private Skill.State onGetSkillState(ClientCategoryData categoryData, ClientSkillConfig skillConfig) {
         Skill.State state = categoryData.getSkillState(skillConfig);
+        ResourceLocation categoryId = categoryData.getConfig().id();
+        if (state == Skill.State.LOCKED && UnlockableSkillClientCache.isAllowed(categoryId, skillConfig.id())) {
+            return Skill.State.AVAILABLE;
+        }
+
         if (state != Skill.State.UNLOCKED) {
             return state;
         }
 
-        ResourceLocation categoryId = categoryData.getConfig().id();
         RepeatableSkillClientCache.Entry entry = RepeatableSkillClientCache.get(categoryId, skillConfig.id());
         if (entry == null || !entry.repeatable()) {
+            return state;
+        }
+
+        if (entry.remainingRepeats() == 0) {
             return state;
         }
 
@@ -125,6 +134,7 @@ public abstract class SkillsScreenMixin extends Screen {
 
         tooltipLines.add(Component.empty().getVisualOrderText());
         tooltipLines.add(this.skilljs$tooltipLine(Component.translatable("tooltip.pufferfishskillsjs.repeatable.available"), ChatFormatting.GOLD));
+        tooltipLines.add(this.skilljs$tooltipLine(Component.translatable("tooltip.pufferfishskillsjs.repeatable.count", entry.count()), ChatFormatting.AQUA));
 
         int remainingRepeats = entry.remainingRepeats();
         if (remainingRepeats < 0) {
@@ -135,6 +145,7 @@ public abstract class SkillsScreenMixin extends Screen {
 
         this.setTooltipForNextRenderPass(tooltipLines);
     }
+
     @Unique
     private FormattedCharSequence skilljs$tooltipLine(Component component, ChatFormatting color) {
         MutableComponent styledComponent = component.copy().withStyle(color);
