@@ -6,6 +6,7 @@
   "refmap": "pufferfishskillsjs.refmap.json",
   "mixins": [
     "AttributeRewardMixin",
+    "RewardUpdateContextMixin",
     "SkillsModAccessor",
     "SkillsModMixin"
   ],

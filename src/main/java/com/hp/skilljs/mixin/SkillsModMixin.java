@@ -5,6 +5,7 @@ import com.hp.skilljs.integration.RepeatableSkillSupport;
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import com.hp.skilljs.repeatable.RepeatableSkillRewards;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
+import com.hp.skilljs.reward.RewardUpdateContexts;
 import com.hp.skilljs.unlockable.UnlockableSkillData;
 import com.hp.skilljs.unlockable.UnlockableSkillSupport;
 import net.minecraft.resources.ResourceLocation;
@@ -16,7 +17,6 @@ import net.puffish.skillsmod.config.CategoryConfig;
 import net.puffish.skillsmod.config.skill.SkillConfig;
 import net.puffish.skillsmod.config.skill.SkillDefinitionConfig;
 import net.puffish.skillsmod.config.skill.SkillRewardConfig;
-import net.puffish.skillsmod.impl.rewards.RewardUpdateContextImpl;
 import net.puffish.skillsmod.server.data.CategoryData;
 import net.puffish.skillsmod.server.data.PlayerData;
 import net.puffish.skillsmod.server.network.ServerPacketSender;
@@ -111,9 +111,14 @@ public abstract class SkillsModMixin {
         Predicate<SkillRewardConfig> rewardFilter
     ) {
         int count = this.skilljs$getEffectiveUnlockedCount(player, categoryConfig, categoryData, definition.id());
-        definition.rewards().stream()
-            .filter(rewardFilter)
-            .forEach(reward -> reward.instance().update(new RewardUpdateContextImpl(player, count, action)));
+        for (int rewardIndex = 0; rewardIndex < definition.rewards().size(); rewardIndex++) {
+            SkillRewardConfig reward = definition.rewards().get(rewardIndex);
+            if (!rewardFilter.test(reward)) {
+                continue;
+            }
+
+            reward.instance().update(RewardUpdateContexts.create(player, categoryConfig.id(), definition.id(), rewardIndex, count, action));
+        }
     }
 
     @Inject(method = "updateRewards(Lnet/minecraft/server/level/ServerPlayer;Ljava/util/function/Predicate;)V", at = @At("HEAD"), cancellable = true, remap = false)
@@ -191,7 +196,7 @@ public abstract class SkillsModMixin {
                 categoryData.unlockSkill(skillId);
                 this.packetSender.send(player, new SkillUpdateOutPacket(categoryId, skillId, true));
                 this.skilljs$syncRepeatablePoints(player, categoryConfig.get(), categoryData);
-                SkillsMod.SKILL_UNLOCK.invoker().onSkillUnlock(categoryId, skillId);
+                SkillsMod.SKILL_UNLOCK.invoker().onSkillUnlock(player, categoryId, skillId);
                 this.onSkillUnlock(categoryData, skillId, player, categoryId, categoryConfig.get(), ci);
                 this.onUpdateSkillRewards(player, categoryConfig.get(), categoryData, skillConfig.get(), true, ci);
                 ci.cancel();
@@ -231,7 +236,7 @@ public abstract class SkillsModMixin {
         ci.cancel();
     }
 
-    @Inject(method = "lambda$getSkillState$52", at = @At("RETURN"), cancellable = true, remap = false)
+    @Inject(method = "lambda$getSkillState$53", at = @At("RETURN"), cancellable = true, remap = false)
     private void onGetAllowedSkillState(
         ServerPlayer player,
         CategoryConfig categoryConfig,
@@ -272,7 +277,7 @@ public abstract class SkillsModMixin {
         return RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, categoryData) >= definition.requiredSpentPoints();
     }
 
-    @Inject(method = "lambda$tryUnlockSkill$20", at = @At(value = "INVOKE", target = "Lnet/puffish/skillsmod/server/data/CategoryData;unlockSkill(Ljava/lang/String;)V", shift = At.Shift.AFTER), remap = false)
+    @Inject(method = "lambda$tryUnlockSkill$21", at = @At(value = "INVOKE", target = "Lnet/puffish/skillsmod/server/data/CategoryData;unlockSkill(Ljava/lang/String;)V", shift = At.Shift.AFTER), remap = false)
     private void onSkillUnlock(CategoryData categoryData, String skillId, ServerPlayer player, ResourceLocation categoryId, CategoryConfig categoryConfig, CallbackInfo ci) {
         UnlockableSkillSupport.clearSkill(player, categoryId, skillId);
         if (SkillTypeRegistry.isRepeatable(categoryId, skillId)) {

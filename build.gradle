@@ -152,7 +152,7 @@ configurations {
 }
 
 def runtimeModDependencies = [
-    "curse.maven:puffish-skills-835091:7672794",
+    "curse.maven:puffish-skills-835091:8547668",
     "curse.maven:kubejs-238086:5853326",
     "curse.maven:architectury-api-419699:5137938",
     "curse.maven:rhino-416294:6186971"

@@ -1,10 +1,10 @@
 package com.hp.skilljs.repeatable;
 
+import com.hp.skilljs.reward.RewardUpdateContexts;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.config.CategoryConfig;
 import net.puffish.skillsmod.config.skill.SkillConfig;
 import net.puffish.skillsmod.config.skill.SkillDefinitionConfig;
-import net.puffish.skillsmod.impl.rewards.RewardUpdateContextImpl;
 
 public final class RepeatableSkillRewards {
     private RepeatableSkillRewards() {
@@ -16,6 +16,10 @@ public final class RepeatableSkillRewards {
             return;
         }
 
-        definition.rewards().forEach(reward -> reward.instance().update(new RewardUpdateContextImpl(player, count, action)));
+        for (int rewardIndex = 0; rewardIndex < definition.rewards().size(); rewardIndex++) {
+            definition.rewards().get(rewardIndex).instance().update(
+                RewardUpdateContexts.create(player, categoryConfig.id(), definition.id(), rewardIndex, count, action)
+            );
+        }
     }
 }
