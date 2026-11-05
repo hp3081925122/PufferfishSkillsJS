@@ -196,29 +196,13 @@ public class CategoryWrapper {
 
     public int getExperienceRequiredForNextLevel(ServerPlayer player) {
         return category.getExperience()
-            .map(experience -> {
-                int currentLevel = experience.getLevel(player);
-                return experience.getRequiredTotal(currentLevel + 1) - experience.getRequiredTotal(currentLevel);
-            })
+            .map(experience -> ExperienceMath.requiredForNextLevel(experience, player))
             .orElse(0);
     }
 
     public double getExperienceProgressToNextLevel(ServerPlayer player) {
         return category.getExperience()
-            .map(experience -> {
-                int currentLevel = experience.getLevel(player);
-                int currentLevelRequired = experience.getRequiredTotal(currentLevel);
-                int nextLevelRequired = experience.getRequiredTotal(currentLevel + 1);
-                int currentExp = experience.getTotal(player);
-
-                if (nextLevelRequired <= currentLevelRequired) {
-                    return 100.0;
-                }
-
-                int needed = nextLevelRequired - currentLevelRequired;
-                int have = currentExp - currentLevelRequired;
-                return Math.min(100.0, (double) have / needed * 100.0);
-            })
+            .map(experience -> ExperienceMath.progressToNextLevel(experience, player))
             .orElse(0.0);
     }
 

@@ -1,7 +1,6 @@
 package com.hp.skilljs.mixin;
 
 import com.hp.skilljs.client.RepeatableSkillClientCache;
-import com.hp.skilljs.client.UnlockableSkillClientCache;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
@@ -10,9 +9,7 @@ import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
-import net.puffish.skillsmod.api.Skill;
 import net.puffish.skillsmod.client.config.ClientCategoryConfig;
 import net.puffish.skillsmod.client.config.skill.ClientSkillConfig;
 import net.puffish.skillsmod.client.config.skill.ClientSkillDefinitionConfig;
@@ -23,7 +20,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
@@ -45,36 +41,6 @@ public abstract class SkillsScreenMixin extends Screen {
 
     protected SkillsScreenMixin() {
         super(Component.empty());
-    }
-
-    @Redirect(
-        method = "lambda$drawContentWithCategory$22",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/puffish/skillsmod/client/data/ClientCategoryData;getSkillState(Lnet/puffish/skillsmod/client/config/skill/ClientSkillConfig;)Lnet/puffish/skillsmod/api/Skill$State;"
-        )
-    )
-    private Skill.State onGetSkillState(ClientCategoryData categoryData, ClientSkillConfig skillConfig) {
-        Skill.State state = categoryData.getSkillState(skillConfig);
-        ResourceLocation categoryId = categoryData.getConfig().id();
-        if (state == Skill.State.LOCKED && UnlockableSkillClientCache.isAllowed(categoryId, skillConfig.id())) {
-            return Skill.State.AVAILABLE;
-        }
-
-        if (state != Skill.State.UNLOCKED) {
-            return state;
-        }
-
-        RepeatableSkillClientCache.Entry entry = RepeatableSkillClientCache.get(categoryId, skillConfig.id());
-        if (entry == null || !entry.repeatable()) {
-            return state;
-        }
-
-        if (entry.remainingRepeats() == 0) {
-            return state;
-        }
-
-        return Skill.State.AVAILABLE;
     }
 
     @Inject(

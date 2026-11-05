@@ -70,6 +70,10 @@ public final class UnlockableSkillData {
         PLAYER_SKILLS.remove(player.getUUID());
     }
 
+    public static void clearAllPlayers() {
+        PLAYER_SKILLS.clear();
+    }
+
     public static CompoundTag writeToTag(ServerPlayer player, CompoundTag targetTag) {
         CompoundTag rootTag = new CompoundTag();
         for (Map.Entry<ResourceLocation, Set<String>> categoryEntry : getPlayerMap(player).entrySet()) {

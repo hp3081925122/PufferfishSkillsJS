@@ -59,8 +59,13 @@ public final class RepeatableSkillSupport {
             return false;
         }
 
+        if (!SkillTypeRegistry.isRepeatable(categoryId, skillId) || !isSkillUnlocked(player, categoryId, skillId)) {
+            return false;
+        }
+
         int before = RepeatableSkillData.getRepeatCount(player, categoryId, skillId);
-        skillsMod.tryUnlockSkill(player, categoryId, skillId, true);
+        // force=false：未解锁的技能不会被顺带强制解锁
+        skillsMod.tryUnlockSkill(player, categoryId, skillId, false);
         int after = RepeatableSkillData.getRepeatCount(player, categoryId, skillId);
         return after > before;
     }
@@ -108,6 +113,34 @@ public final class RepeatableSkillSupport {
         }
 
         PufferfishSkillsJSNetwork.syncCategory(player, categoryConfig.id(), entries);
+    }
+
+    public static boolean isSkillUnlocked(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+        SkillsMod skillsMod = SkillsMod.getInstance();
+        if (skillsMod == null) {
+            return false;
+        }
+
+        SkillsModAccessor accessor = (SkillsModAccessor) skillsMod;
+        return accessor.skilljs$invokeGetCategory(categoryId)
+            .map(categoryConfig -> {
+                PlayerData playerData = accessor.skilljs$invokeGetPlayerData(player);
+                return playerData.isCategoryUnlocked(categoryConfig)
+                    && playerData.getOrCreateCategoryData(categoryConfig).getUnlockedSkillIds().contains(skillId);
+            })
+            .orElse(false);
+    }
+
+    /**
+     * 重复次数被脚本直接修改后，同步点数、客户端显示，并重新计算奖励。
+     */
+    public static void refresh(ServerPlayer player, ResourceLocation categoryId) {
+        syncPoints(player, categoryId);
+        syncRepeatableState(player, categoryId);
+        SkillsMod skillsMod = SkillsMod.getInstance();
+        if (skillsMod != null) {
+            skillsMod.updateRewards(player, reward -> true);
+        }
     }
 
     public static void syncRepeatableState(ServerPlayer player, ResourceLocation categoryId) {

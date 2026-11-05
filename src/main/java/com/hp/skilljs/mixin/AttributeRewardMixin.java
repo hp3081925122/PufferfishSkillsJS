@@ -19,7 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Holder;
 
 @Mixin(value = AttributeReward.class, remap = false)
 public abstract class AttributeRewardMixin {
@@ -28,11 +29,11 @@ public abstract class AttributeRewardMixin {
 
     @Shadow
     @Final
-    private List<UUID> uuids;
+    private List<ResourceLocation> ids;
 
     @Shadow
     @Final
-    private Attribute attribute;
+    private Holder<Attribute> attribute;
 
     @Shadow
     @Final
@@ -51,10 +52,10 @@ public abstract class AttributeRewardMixin {
         ServerPlayer player = context.getPlayer();
         AttributeInstance attributeInstance = Objects.requireNonNull(player.getAttribute(this.attribute));
         String modifierName = null;
-        UUID uuid = null;
+        ResourceLocation uuid = null;
         if (context instanceof RewardUpdateContextMetadata metadata && metadata.skilljs$getRewardKey() != null) {
             modifierName = skilljs$modifierNamePrefix + metadata.skilljs$getRewardKey();
-            uuid = UUID.nameUUIDFromBytes(modifierName.getBytes(StandardCharsets.UTF_8));
+            uuid = ResourceLocation.fromNamespaceAndPath("pufferfishskillsjs", "attribute/" + java.util.UUID.nameUUIDFromBytes(modifierName.getBytes(StandardCharsets.UTF_8)));
         }
 
         if (!PufferfishSkillsJSConfig.COMPRESS_ATTRIBUTE_REWARDS.get()) {
@@ -64,7 +65,7 @@ public abstract class AttributeRewardMixin {
 
             if (this.skilljs$compacted) {
                 this.skilljs$removeTrackedModifiers(attributeInstance);
-                this.uuids.clear();
+                this.ids.clear();
                 this.skilljs$compacted = false;
             }
 
@@ -78,23 +79,23 @@ public abstract class AttributeRewardMixin {
         this.skilljs$removeTrackedModifiers(attributeInstance);
         attributeInstance.removeModifier(uuid);
         if (count <= 0) {
-            this.uuids.clear();
+            this.ids.clear();
             this.skilljs$compacted = false;
             ci.cancel();
             return;
         }
 
-        this.uuids.clear();
-        this.uuids.add(uuid);
+        this.ids.clear();
+        this.ids.add(uuid);
         this.skilljs$compacted = true;
         double compactValue = this.skilljs$getCompactValue(count);
-        attributeInstance.addTransientModifier(new AttributeModifier(uuid, modifierName, compactValue, this.operation));
+        attributeInstance.addTransientModifier(new AttributeModifier(uuid, compactValue, this.operation));
         ci.cancel();
     }
 
     @Unique
     private void skilljs$removeTrackedModifiers(AttributeInstance attributeInstance) {
-        for (UUID existingUuid : this.uuids) {
+        for (ResourceLocation existingUuid : this.ids) {
             if (attributeInstance.getModifier(existingUuid) != null) {
                 attributeInstance.removeModifier(existingUuid);
             }
@@ -103,7 +104,7 @@ public abstract class AttributeRewardMixin {
 
     @Unique
     private double skilljs$getCompactValue(int count) {
-        if (this.operation == AttributeModifier.Operation.MULTIPLY_TOTAL) {
+        if (this.operation == AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL) {
             double compactValue = Math.pow(1.0D + this.value, count) - 1.0D;
             if (Double.isFinite(compactValue)) {
                 return compactValue;

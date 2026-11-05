@@ -1,6 +1,6 @@
 package com.hp.skilljs.event;
 
-import dev.latvian.mods.kubejs.event.EventJS;
+import dev.latvian.mods.kubejs.event.KubeEvent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.api.Category;
@@ -8,7 +8,7 @@ import net.puffish.skillsmod.api.SkillsAPI;
 
 import java.util.Optional;
 
-public class CategoryLockEventJS extends EventJS {
+public class CategoryLockEventJS implements KubeEvent {
     private final ServerPlayer player;
     private final ResourceLocation categoryId;
 

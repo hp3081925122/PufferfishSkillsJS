@@ -3,8 +3,10 @@ package com.hp.skilljs.unlockable;
 import com.hp.skilljs.mixin.SkillsModAccessor;
 import com.hp.skilljs.network.PufferfishSkillsJSNetwork;
 import net.minecraft.resources.ResourceLocation;
+import com.hp.skilljs.repeatable.RepeatableSkillData;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.SkillsMod;
+import net.puffish.skillsmod.api.Skill;
 import net.puffish.skillsmod.config.CategoryConfig;
 import net.puffish.skillsmod.config.skill.SkillConfig;
 import net.puffish.skillsmod.config.skill.SkillDefinitionConfig;
@@ -54,8 +56,14 @@ public final class UnlockableSkillSupport {
             return false;
         }
 
-        return categoryData.getPointsLeft(categoryConfig) >= Math.max(definition.requiredPoints(), definition.cost())
-            && categoryData.getSpentPoints(categoryConfig) >= definition.requiredSpentPoints();
+        // 互斥技能已解锁时不允许绕过
+        if (categoryData.getSkillState(categoryConfig, skillConfig, definition) == Skill.State.EXCLUDED) {
+            return false;
+        }
+
+        // 使用扣除重复加点额外花费后的有效点数，与界面状态保持一致
+        return RepeatableSkillData.getEffectivePointsLeft(player, categoryConfig, categoryData) >= Math.max(definition.requiredPoints(), definition.cost())
+            && RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, categoryData) >= definition.requiredSpentPoints();
     }
 
     public static void syncCategory(ServerPlayer player, ResourceLocation categoryId) {

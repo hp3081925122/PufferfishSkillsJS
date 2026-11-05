@@ -7,10 +7,10 @@
 ### Q: PufferfishSkillsJS 需要哪些依赖？
 
 A: 需要以下模组：
-- Minecraft 1.20.1
-- Forge 47.0.0+
-- KubeJS 2001.6.5+
-- Pufferfish's Skills 0.17.0+
+- Minecraft 1.21.1
+- NeoForge 21.1.265+
+- KubeJS 2101.7.2-build.381+
+- Pufferfish's Skills 0.19.0+（已验证 0.19.0）
 
 ### Q: 如何确认模组是否正常加载？
 

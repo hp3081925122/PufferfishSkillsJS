@@ -289,8 +289,7 @@ public class SkillsAPIWrapper {
     }
 
     public int getRequiredForNextLevel(ServerPlayer player, String categoryId) {
-        int currentLevel = getLevel(player, categoryId);
-        return getRequiredForLevel(categoryId, currentLevel + 1);
+        return getExperience(categoryId).map(exp -> ExperienceMath.requiredForNextLevel(exp, player)).orElse(0);
     }
 
     public Optional<Experience> getExperience(String categoryId) {
@@ -306,37 +305,15 @@ public class SkillsAPIWrapper {
     }
 
     public void setLevel(ServerPlayer player, String categoryId, int level) {
-        getExperience(categoryId).ifPresent(exp -> exp.setTotal(player, exp.getRequiredTotal(level)));
+        getExperience(categoryId).ifPresent(exp -> exp.setLevel(player, Math.max(0, level)));
     }
 
     public boolean levelUp(ServerPlayer player, String categoryId) {
-        return getExperience(categoryId).map(exp -> {
-            int currentLevel = exp.getLevel(player);
-            int nextLevelRequired = exp.getRequiredTotal(currentLevel + 1);
-            if (exp.getTotal(player) >= nextLevelRequired) {
-                return false;
-            }
-
-            exp.setTotal(player, nextLevelRequired);
-            return true;
-        }).orElse(false);
+        return getExperience(categoryId).map(exp -> ExperienceMath.levelUp(exp, player)).orElse(false);
     }
 
     public double getProgressToNextLevel(ServerPlayer player, String categoryId) {
-        return getExperience(categoryId).map(exp -> {
-            int currentLevel = exp.getLevel(player);
-            int currentLevelRequired = exp.getRequiredTotal(currentLevel);
-            int nextLevelRequired = exp.getRequiredTotal(currentLevel + 1);
-            int currentExp = exp.getTotal(player);
-
-            if (nextLevelRequired <= currentLevelRequired) {
-                return 100.0;
-            }
-
-            int needed = nextLevelRequired - currentLevelRequired;
-            int have = currentExp - currentLevelRequired;
-            return Math.min(100.0, (double) have / needed * 100.0);
-        }).orElse(0.0);
+        return getExperience(categoryId).map(exp -> ExperienceMath.progressToNextLevel(exp, player)).orElse(0.0);
     }
 
     private int applySkillAction(ServerPlayer player, String categoryId, List<String> skillIds, SkillAction action) {
@@ -352,8 +329,11 @@ public class SkillsAPIWrapper {
                     var skill = skillOpt.get();
                     switch (action) {
                         case UNLOCK -> {
-                            if (skill.getState(player) == Skill.State.AFFORDABLE) {
+                            Skill.State state = skill.getState(player);
+                            if (state == Skill.State.AFFORDABLE) {
                                 skill.unlock(player);
+                                affected++;
+                            } else if (state == Skill.State.UNLOCKED && RepeatableSkillSupport.tryRepeatUnlock(player, category.getId(), skillId)) {
                                 affected++;
                             }
                         }

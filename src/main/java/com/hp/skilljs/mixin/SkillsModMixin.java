@@ -1,18 +1,20 @@
 package com.hp.skilljs.mixin;
 
+import com.hp.skilljs.PufferfishSkillsKubeJSPlugin;
+import com.hp.skilljs.event.CategoryLockEventJS;
+import com.hp.skilljs.event.CategoryUnlockEventJS;
 import com.hp.skilljs.event.SkillRepeatUnlockEventJS;
 import com.hp.skilljs.integration.RepeatableSkillSupport;
 import com.hp.skilljs.repeatable.RepeatableSkillData;
-import com.hp.skilljs.repeatable.RepeatableSkillRewards;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
 import com.hp.skilljs.reward.RewardUpdateContexts;
 import com.hp.skilljs.unlockable.UnlockableSkillData;
 import com.hp.skilljs.unlockable.UnlockableSkillSupport;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.nbt.CompoundTag;
-import net.puffish.skillsmod.api.Skill;
 import net.puffish.skillsmod.SkillsMod;
+import net.puffish.skillsmod.api.Skill;
 import net.puffish.skillsmod.config.CategoryConfig;
 import net.puffish.skillsmod.config.skill.SkillConfig;
 import net.puffish.skillsmod.config.skill.SkillDefinitionConfig;
@@ -23,24 +25,23 @@ import net.puffish.skillsmod.server.network.ServerPacketSender;
 import net.puffish.skillsmod.server.network.packets.out.PointsUpdateOutPacket;
 import net.puffish.skillsmod.server.network.packets.out.SkillUpdateOutPacket;
 import net.puffish.skillsmod.server.setup.ServerPlatform;
-import com.hp.skilljs.PufferfishSkillsKubeJSPlugin;
-import com.hp.skilljs.event.CategoryLockEventJS;
-import com.hp.skilljs.event.CategoryUnlockEventJS;
-import com.hp.skilljs.event.SkillLockEventJS;
-import com.hp.skilljs.event.SkillUnlockEventJS;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+/**
+ * 只注入具名方法，不依赖编译器生成的 lambda 编号（上游小版本更新会改变编号导致崩溃）。
+ * 技能解锁/锁定的附加逻辑改由 Pufferfish 官方事件处理，见 PufferfishSkillsJSMod。
+ */
 @Mixin(value = SkillsMod.class, remap = false)
 public abstract class SkillsModMixin {
     @Shadow
@@ -63,16 +64,22 @@ public abstract class SkillsModMixin {
     @Shadow
     protected abstract Optional<CategoryData> getCategoryDataIfUnlocked(ServerPlayer player, CategoryConfig categoryConfig);
 
+    @Shadow
+    protected abstract void watchNewPoints(ServerPlayer player, CategoryConfig categoryConfig, CategoryData categoryData, boolean force, Runnable action);
+
+    @Shadow
+    protected abstract void syncPoints(ServerPlayer player, CategoryConfig categoryConfig, CategoryData categoryData);
+
+    @Shadow
+    protected abstract void updateSkillRewards(ServerPlayer player, CategoryConfig categoryConfig, CategoryData categoryData, SkillConfig skillConfig, boolean action);
+
     @Unique
     private void skilljs$syncRepeatablePoints(ServerPlayer player, CategoryConfig categoryConfig, CategoryData categoryData) {
-        int baseSpent = categoryData.getSpentPoints(categoryConfig);
-        int extraSpent = RepeatableSkillData.getExtraSpentPoints(player, categoryConfig);
-        int effectiveSpent = baseSpent + extraSpent;
         this.packetSender.send(
             player,
             new PointsUpdateOutPacket(
                 categoryConfig.id(),
-                effectiveSpent,
+                RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, categoryData),
                 categoryData.getPointsTotal()
             )
         );
@@ -121,10 +128,25 @@ public abstract class SkillsModMixin {
         }
     }
 
+    @Unique
+    private boolean skilljs$canAffordWithRepeatablePoints(
+        ServerPlayer player,
+        CategoryConfig categoryConfig,
+        CategoryData categoryData,
+        SkillDefinitionConfig definition
+    ) {
+        int requiredPoints = Math.max(definition.requiredPoints(), definition.cost());
+        if (RepeatableSkillData.getEffectivePointsLeft(player, categoryConfig, categoryData) < requiredPoints) {
+            return false;
+        }
+
+        return RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, categoryData) >= definition.requiredSpentPoints();
+    }
+
     @Inject(method = "updateRewards(Lnet/minecraft/server/level/ServerPlayer;Ljava/util/function/Predicate;)V", at = @At("HEAD"), cancellable = true, remap = false)
     private void onUpdateRewards(ServerPlayer player, Predicate<SkillRewardConfig> rewardFilter, CallbackInfo ci) {
+        ci.cancel();
         if (this.platform.isFakePlayer(player)) {
-            ci.cancel();
             return;
         }
 
@@ -135,8 +157,6 @@ public abstract class SkillsModMixin {
                 }
             });
         }
-
-        ci.cancel();
     }
 
     @Inject(
@@ -153,12 +173,7 @@ public abstract class SkillsModMixin {
         ci.cancel();
     }
 
-    @Inject(
-        method = "updateSkillRewards",
-        at = @At("HEAD"),
-        cancellable = true,
-        remap = false
-    )
+    @Inject(method = "updateSkillRewards", at = @At("HEAD"), cancellable = true, remap = false)
     private void onUpdateSkillRewards(
         ServerPlayer player,
         CategoryConfig categoryConfig,
@@ -174,45 +189,49 @@ public abstract class SkillsModMixin {
     }
 
     @Inject(method = "tryUnlockSkill", at = @At("HEAD"), cancellable = true, remap = false)
-    private void onTryUnlockRepeatableSkill(ServerPlayer player, ResourceLocation categoryId, String skillId, boolean action, CallbackInfo ci) {
-        Optional<CategoryConfig> categoryConfig = this.getCategory(categoryId);
-        if (categoryConfig.isEmpty()) {
+    private void onTryUnlockSkill(ServerPlayer player, ResourceLocation categoryId, String skillId, boolean force, CallbackInfo ci) {
+        Optional<CategoryConfig> optCategoryConfig = this.getCategory(categoryId);
+        if (optCategoryConfig.isEmpty()) {
             return;
         }
 
-        Optional<SkillConfig> skillConfig = categoryConfig.get().skills().getById(skillId);
-        if (skillConfig.isEmpty()) {
+        CategoryConfig categoryConfig = optCategoryConfig.get();
+        Optional<SkillConfig> optSkillConfig = categoryConfig.skills().getById(skillId);
+        if (optSkillConfig.isEmpty()) {
             return;
         }
 
+        SkillConfig skillConfig = optSkillConfig.get();
         PlayerData playerData = this.getPlayerData(player);
-        if (!playerData.isCategoryUnlocked(categoryConfig.get())) {
+        if (!playerData.isCategoryUnlocked(categoryConfig)) {
             return;
         }
 
-        CategoryData categoryData = playerData.getOrCreateCategoryData(categoryConfig.get());
+        CategoryData categoryData = playerData.getOrCreateCategoryData(categoryConfig);
         if (!categoryData.getUnlockedSkillIds().contains(skillId)) {
-            if (UnlockableSkillSupport.canUnlockAllowedSkill(player, categoryConfig.get(), categoryData, skillConfig.get())) {
-                categoryData.unlockSkill(skillId);
-                this.packetSender.send(player, new SkillUpdateOutPacket(categoryId, skillId, true));
-                this.skilljs$syncRepeatablePoints(player, categoryConfig.get(), categoryData);
+            if (force) {
+                return;
+            }
+
+            if (UnlockableSkillSupport.canUnlockAllowedSkill(player, categoryConfig, categoryData, skillConfig)) {
+                // 与上游 tryUnlockSkill 的流程保持一致，只是跳过前置连接检查
+                this.watchNewPoints(player, categoryConfig, categoryData, false, () -> {
+                    categoryData.unlockSkill(skillId);
+                    this.packetSender.send(player, new SkillUpdateOutPacket(categoryId, skillId, true));
+                    this.syncPoints(player, categoryConfig, categoryData);
+                });
                 SkillsMod.SKILL_UNLOCK.invoker().onSkillUnlock(player, categoryId, skillId);
-                this.onSkillUnlock(categoryData, skillId, player, categoryId, categoryConfig.get(), ci);
-                this.onUpdateSkillRewards(player, categoryConfig.get(), categoryData, skillConfig.get(), true, ci);
+                this.updateSkillRewards(player, categoryConfig, categoryData, skillConfig, true);
                 ci.cancel();
                 return;
             }
 
-            if (RepeatableSkillData.getExtraSpentPoints(player, categoryConfig.get()) <= 0) {
+            if (RepeatableSkillData.getExtraSpentPoints(player, categoryConfig) <= 0) {
                 return;
             }
 
-            SkillDefinitionConfig definition = RepeatableSkillData.getDefinition(categoryConfig.get(), skillId);
-            if (definition == null) {
-                return;
-            }
-
-            if (!this.skilljs$canAffordWithRepeatablePoints(player, categoryConfig.get(), categoryData, definition)) {
+            SkillDefinitionConfig definition = RepeatableSkillData.getDefinition(categoryConfig, skillId);
+            if (definition != null && !this.skilljs$canAffordWithRepeatablePoints(player, categoryConfig, categoryData, definition)) {
                 ci.cancel();
             }
 
@@ -223,76 +242,56 @@ public abstract class SkillsModMixin {
             return;
         }
 
-        if (!RepeatableSkillData.canRepeatUnlock(player, categoryConfig.get(), categoryData, skillConfig.get())) {
-            ci.cancel();
+        ci.cancel();
+        if (!RepeatableSkillData.canRepeatUnlock(player, categoryConfig, categoryData, skillConfig)) {
             return;
         }
 
         int repeatCount = RepeatableSkillData.incrementRepeatCount(player, categoryId, skillId);
-        RepeatableSkillRewards.update(player, categoryConfig.get(), skillConfig.get(), repeatCount, true);
+        // 走统一的奖励刷新，按同一 definition 下所有节点的合计次数计算
+        this.updateSkillRewards(player, categoryConfig, categoryData, skillConfig, true);
         PufferfishSkillsKubeJSPlugin.SKILL_REPEAT_UNLOCK.post(new SkillRepeatUnlockEventJS(player, categoryId, skillId, repeatCount));
-        this.skilljs$syncRepeatablePoints(player, categoryConfig.get(), categoryData);
-        RepeatableSkillSupport.syncRepeatableState(player, categoryConfig.get());
-        ci.cancel();
+        this.skilljs$syncRepeatablePoints(player, categoryConfig, categoryData);
+        RepeatableSkillSupport.syncRepeatableState(player, categoryConfig);
     }
 
-    @Inject(method = "lambda$getSkillState$53", at = @At("RETURN"), cancellable = true, remap = false)
-    private void onGetAllowedSkillState(
-        ServerPlayer player,
-        CategoryConfig categoryConfig,
-        SkillConfig skillConfig,
-        SkillDefinitionConfig definition,
-        CallbackInfoReturnable<Skill.State> cir
-    ) {
-        Skill.State original = cir.getReturnValue();
-        if (original != Skill.State.LOCKED || !UnlockableSkillData.isAllowed(player, categoryConfig.id(), skillConfig.id())) {
+    @Inject(
+        method = "getSkillState(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/ResourceLocation;Ljava/lang/String;)Ljava/util/Optional;",
+        at = @At("RETURN"),
+        cancellable = true,
+        remap = false
+    )
+    private void onGetSkillState(ServerPlayer player, ResourceLocation categoryId, String skillId, CallbackInfoReturnable<Optional<Skill.State>> cir) {
+        Optional<Skill.State> original = cir.getReturnValue();
+        if (original == null || original.isEmpty()) {
             return;
         }
 
-        if (RepeatableSkillData.getEffectivePointsLeft(player, categoryConfig, this.getPlayerData(player).getOrCreateCategoryData(categoryConfig)) < Math.max(definition.requiredPoints(), definition.cost())) {
-            cir.setReturnValue(Skill.State.AVAILABLE);
+        Skill.State state = original.get();
+        boolean allowed = state == Skill.State.LOCKED && UnlockableSkillData.isAllowed(player, categoryId, skillId);
+        if (!allowed && state != Skill.State.AFFORDABLE) {
             return;
         }
 
-        if (RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, this.getPlayerData(player).getOrCreateCategoryData(categoryConfig)) < definition.requiredSpentPoints()) {
-            cir.setReturnValue(Skill.State.AVAILABLE);
+        Optional<CategoryConfig> categoryConfig = this.getCategory(categoryId);
+        if (categoryConfig.isEmpty()) {
             return;
         }
 
-        cir.setReturnValue(Skill.State.AFFORDABLE);
-    }
-
-    @Unique
-    private boolean skilljs$canAffordWithRepeatablePoints(
-        ServerPlayer player,
-        CategoryConfig categoryConfig,
-        CategoryData categoryData,
-        SkillDefinitionConfig definition
-    ) {
-        int requiredPoints = Math.max(definition.requiredPoints(), definition.cost());
-        if (RepeatableSkillData.getEffectivePointsLeft(player, categoryConfig, categoryData) < requiredPoints) {
-            return false;
+        SkillDefinitionConfig definition = RepeatableSkillData.getDefinition(categoryConfig.get(), skillId);
+        if (definition == null) {
+            return;
         }
 
-        return RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, categoryData) >= definition.requiredSpentPoints();
-    }
-
-    @Inject(method = "lambda$tryUnlockSkill$21", at = @At(value = "INVOKE", target = "Lnet/puffish/skillsmod/server/data/CategoryData;unlockSkill(Ljava/lang/String;)V", shift = At.Shift.AFTER), remap = false)
-    private void onSkillUnlock(CategoryData categoryData, String skillId, ServerPlayer player, ResourceLocation categoryId, CategoryConfig categoryConfig, CallbackInfo ci) {
-        UnlockableSkillSupport.clearSkill(player, categoryId, skillId);
-        if (SkillTypeRegistry.isRepeatable(categoryId, skillId)) {
-            RepeatableSkillData.ensureInitialUnlock(player, categoryId, skillId);
-            RepeatableSkillSupport.syncRepeatableState(player, categoryConfig);
+        CategoryData categoryData = this.getPlayerData(player).getOrCreateCategoryData(categoryConfig.get());
+        if (this.skilljs$canAffordWithRepeatablePoints(player, categoryConfig.get(), categoryData, definition)) {
+            if (allowed) {
+                cir.setReturnValue(Optional.of(Skill.State.AFFORDABLE));
+            }
+            return;
         }
-        PufferfishSkillsKubeJSPlugin.SKILL_UNLOCK.post(new SkillUnlockEventJS(player, categoryId, skillId));
-    }
 
-    @Inject(method = "lockSkill", at = @At("TAIL"), remap = false)
-    private void onSkillLock(ServerPlayer player, ResourceLocation categoryId, String skillId, CallbackInfo ci) {
-        UnlockableSkillSupport.clearSkill(player, categoryId, skillId);
-        RepeatableSkillData.clearSkill(player, categoryId, skillId);
-        RepeatableSkillSupport.syncRepeatableState(player, categoryId);
-        PufferfishSkillsKubeJSPlugin.SKILL_LOCK.post(new SkillLockEventJS(player, categoryId, skillId));
+        cir.setReturnValue(Optional.of(Skill.State.AVAILABLE));
     }
 
     @Inject(method = "unlockCategory", at = @At("TAIL"), remap = false)
@@ -307,14 +306,15 @@ public abstract class SkillsModMixin {
         PufferfishSkillsKubeJSPlugin.CATEGORY_LOCK.post(new CategoryLockEventJS(player, categoryId));
     }
 
-    @Inject(method = "resetSkills", at = @At("TAIL"), remap = false)
+    @Inject(method = "resetSkills(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/ResourceLocation;)V", at = @At("TAIL"), remap = false)
     private void onResetSkills(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
         UnlockableSkillSupport.clearCategory(player, categoryId);
         RepeatableSkillData.clearCategory(player, categoryId);
+        RepeatableSkillSupport.syncPoints(player, categoryId);
         RepeatableSkillSupport.syncRepeatableState(player, categoryId);
     }
 
-    @Inject(method = "eraseCategory", at = @At("TAIL"), remap = false)
+    @Inject(method = "eraseCategory(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/ResourceLocation;)V", at = @At("TAIL"), remap = false)
     private void onEraseCategory(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
         UnlockableSkillSupport.clearCategory(player, categoryId);
         RepeatableSkillData.clearCategory(player, categoryId);
@@ -324,11 +324,13 @@ public abstract class SkillsModMixin {
     @Inject(method = "exportPlayerData", at = @At("TAIL"), remap = false)
     private void onExportPlayerData(ServerPlayer player, CompoundTag tag, CallbackInfo ci) {
         RepeatableSkillData.writeToTag(player, tag);
+        UnlockableSkillData.writeToTag(player, tag);
     }
 
     @Inject(method = "importPlayerData", at = @At("TAIL"), remap = false)
     private void onImportPlayerData(ServerPlayer player, CompoundTag tag, CallbackInfo ci) {
         RepeatableSkillData.readFromTag(player, tag);
+        UnlockableSkillData.readFromTag(player, tag);
     }
 
     @Inject(method = "syncPoints", at = @At("TAIL"), remap = false)

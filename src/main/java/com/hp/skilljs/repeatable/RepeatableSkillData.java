@@ -75,6 +75,14 @@ public final class RepeatableSkillData {
         PLAYER_COUNTS.remove(player.getUUID());
     }
 
+    public static void clearAllPlayers() {
+        PLAYER_COUNTS.clear();
+    }
+
+    public static Iterable<ResourceLocation> getCategoryIds(ServerPlayer player) {
+        return Map.copyOf(getPlayerMap(player)).keySet();
+    }
+
     public static int getExtraSpentPoints(ServerPlayer player, CategoryConfig categoryConfig) {
         Map<String, Integer> categoryMap = getPlayerMap(player).get(categoryConfig.id());
         if (categoryMap == null || categoryMap.isEmpty()) {

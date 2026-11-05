@@ -59,26 +59,40 @@ public class RepeatableSkillAPIWrapper {
         return RepeatableSkillData.getRemainingRepeats(player, parseResourceLocation(categoryId), skillId);
     }
 
-    public void setRepeatCount(ServerPlayer player, String categoryId, String skillId, int count) {
+    /**
+     * 直接设置重复次数。只对已解锁的可重复技能生效（count 小于等于 0 视为清除）。
+     * @return 是否已修改
+     */
+    public boolean setRepeatCount(ServerPlayer player, String categoryId, String skillId, int count) {
         ResourceLocation categoryKey = parseResourceLocation(categoryId);
+        if (count > 0 && (!SkillTypeRegistry.isRepeatable(categoryKey, skillId)
+            || !RepeatableSkillSupport.isSkillUnlocked(player, categoryKey, skillId))) {
+            return false;
+        }
+
         RepeatableSkillData.setRepeatCount(player, categoryKey, skillId, count);
-        RepeatableSkillSupport.syncPoints(player, categoryKey);
+        RepeatableSkillSupport.refresh(player, categoryKey);
+        return true;
     }
 
     public void clearRepeatData(ServerPlayer player, String categoryId, String skillId) {
         ResourceLocation categoryKey = parseResourceLocation(categoryId);
         RepeatableSkillData.clearSkill(player, categoryKey, skillId);
-        RepeatableSkillSupport.syncPoints(player, categoryKey);
+        RepeatableSkillSupport.refresh(player, categoryKey);
     }
 
     public void clearCategoryData(ServerPlayer player, String categoryId) {
         ResourceLocation categoryKey = parseResourceLocation(categoryId);
         RepeatableSkillData.clearCategory(player, categoryKey);
-        RepeatableSkillSupport.syncPoints(player, categoryKey);
+        RepeatableSkillSupport.refresh(player, categoryKey);
     }
 
     public void clearAllData(ServerPlayer player) {
+        Iterable<ResourceLocation> categoryIds = RepeatableSkillData.getCategoryIds(player);
         RepeatableSkillData.clearAll(player);
+        for (ResourceLocation categoryId : categoryIds) {
+            RepeatableSkillSupport.refresh(player, categoryId);
+        }
     }
 
     public boolean repeatUnlock(ServerPlayer player, String categoryId, String skillId) {

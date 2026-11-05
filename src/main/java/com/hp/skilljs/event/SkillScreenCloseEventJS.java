@@ -1,9 +1,9 @@
 package com.hp.skilljs.event;
 
-import dev.latvian.mods.kubejs.event.EventJS;
+import dev.latvian.mods.kubejs.event.KubeEvent;
 import net.minecraft.server.level.ServerPlayer;
 
-public class SkillScreenCloseEventJS extends EventJS {
+public class SkillScreenCloseEventJS implements KubeEvent {
     private final ServerPlayer player;
 
     public SkillScreenCloseEventJS(ServerPlayer player) {

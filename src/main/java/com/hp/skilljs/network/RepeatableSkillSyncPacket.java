@@ -3,13 +3,22 @@ package com.hp.skilljs.network;
 import com.hp.skilljs.client.RepeatableSkillClientCache;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
-public record RepeatableSkillSyncPacket(ResourceLocation categoryId, Map<String, RepeatableSkillClientCache.Entry> entries) {
+public record RepeatableSkillSyncPacket(ResourceLocation categoryId, Map<String, RepeatableSkillClientCache.Entry> entries) implements CustomPacketPayload {
+    public static final Type<RepeatableSkillSyncPacket> TYPE = new Type<>(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("pufferfishskillsjs", "repeatable_sync"));
+    public static final StreamCodec<FriendlyByteBuf, RepeatableSkillSyncPacket> STREAM_CODEC = StreamCodec.of((buffer, packet) -> encode(packet, buffer), RepeatableSkillSyncPacket::decode);
+
+    @Override
+    public Type<RepeatableSkillSyncPacket> type() {
+        return TYPE;
+    }
+
     public static void encode(RepeatableSkillSyncPacket packet, FriendlyByteBuf buffer) {
         buffer.writeResourceLocation(packet.categoryId);
         buffer.writeVarInt(packet.entries.size());
@@ -36,9 +45,7 @@ public record RepeatableSkillSyncPacket(ResourceLocation categoryId, Map<String,
         return new RepeatableSkillSyncPacket(categoryId, entries);
     }
 
-    public static void handle(RepeatableSkillSyncPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+    public static void handle(RepeatableSkillSyncPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> RepeatableSkillClientCache.syncCategory(packet.categoryId(), packet.entries()));
-        context.setPacketHandled(true);
     }
 }

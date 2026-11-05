@@ -6,8 +6,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +36,7 @@ public final class RepeatableSkillPersistenceEvents {
         }
 
         try {
-            NbtIo.writeCompressed(tag, file);
+            NbtIo.writeCompressed(tag, file.toPath());
             PufferfishSkillsJSMod.LOGGER.debug("Saved PufferfishSkillsJS player data player={} roots={}", serverPlayer.getGameProfile().getName(), tag.getAllKeys());
         } catch (IOException exception) {
             PufferfishSkillsJSMod.LOGGER.error("保存可重复技能数据失败", exception);
@@ -58,7 +59,7 @@ public final class RepeatableSkillPersistenceEvents {
         }
 
         try {
-            CompoundTag tag = NbtIo.readCompressed(file);
+            CompoundTag tag = NbtIo.readCompressed(file.toPath(), net.minecraft.nbt.NbtAccounter.unlimitedHeap());
             RepeatableSkillData.readFromTag(serverPlayer, tag);
             UnlockableSkillData.readFromTag(serverPlayer, tag);
             PufferfishSkillsJSMod.LOGGER.debug("Loaded PufferfishSkillsJS player data player={} roots={}", serverPlayer.getGameProfile().getName(), tag.getAllKeys());
@@ -70,15 +71,10 @@ public final class RepeatableSkillPersistenceEvents {
     }
 
     @SubscribeEvent
-    public static void onPlayerClone(PlayerEvent.Clone event) {
-        Player original = event.getOriginal();
-        Player player = event.getEntity();
-        if (original instanceof ServerPlayer originalPlayer && player instanceof ServerPlayer serverPlayer) {
-            CompoundTag tag = RepeatableSkillData.writeToTag(originalPlayer, new CompoundTag());
-            UnlockableSkillData.writeToTag(originalPlayer, tag);
-            RepeatableSkillData.readFromTag(serverPlayer, tag);
-            UnlockableSkillData.readFromTag(serverPlayer, tag);
-        }
+    public static void onServerStopped(ServerStoppedEvent event) {
+        // 数据按 UUID 存在静态表中，服务器关闭后释放，避免单人切换存档时残留
+        RepeatableSkillData.clearAllPlayers();
+        UnlockableSkillData.clearAllPlayers();
     }
 
     private static void deleteFile(File file) {

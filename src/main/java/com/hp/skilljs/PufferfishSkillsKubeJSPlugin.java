@@ -1,10 +1,10 @@
 package com.hp.skilljs;
 
-import dev.latvian.mods.kubejs.KubeJSPlugin;
+import dev.latvian.mods.kubejs.plugin.KubeJSPlugin;
 import dev.latvian.mods.kubejs.event.EventGroup;
 import dev.latvian.mods.kubejs.event.EventGroupWrapper;
 import dev.latvian.mods.kubejs.event.EventHandler;
-import dev.latvian.mods.kubejs.script.BindingsEvent;
+import dev.latvian.mods.kubejs.script.BindingRegistry;
 import com.hp.skilljs.event.CategoryLockEventJS;
 import com.hp.skilljs.event.CategoryUnlockEventJS;
 import com.hp.skilljs.event.SkillLockEventJS;
@@ -18,7 +18,7 @@ import com.hp.skilljs.integration.RewardAPIWrapper;
 import com.hp.skilljs.integration.SkillWrapper;
 import com.hp.skilljs.integration.SkillsAPIWrapper;
 
-public class PufferfishSkillsKubeJSPlugin extends KubeJSPlugin {
+public class PufferfishSkillsKubeJSPlugin implements KubeJSPlugin {
     public static final EventGroup EVENTS = EventGroup.of("PufferfishSkillsEvents");
 
     public static final EventHandler SKILL_UNLOCK = EVENTS.server("skillUnlock", () -> SkillUnlockEventJS.class);
@@ -29,13 +29,13 @@ public class PufferfishSkillsKubeJSPlugin extends KubeJSPlugin {
     public static final EventHandler SKILL_SCREEN_CLOSE = EVENTS.server("skillScreenClose", () -> SkillScreenCloseEventJS.class);
 
     @Override
-    public void registerEvents() {
-        EVENTS.register();
+    public void registerEvents(dev.latvian.mods.kubejs.event.EventGroupRegistry registry) {
+        registry.register(EVENTS);
     }
 
     @Override
-    public void registerBindings(BindingsEvent event) {
-        event.add("PufferfishSkillsEvents", new EventGroupWrapper(event.getType(), EVENTS));
+    public void registerBindings(BindingRegistry event) {
+        event.add("PufferfishSkillsEvents", new EventGroupWrapper(event.type(), EVENTS));
         event.add("PufferfishSkills", new SkillsAPIWrapper());
         event.add("RepeatableSkills", new RepeatableSkillAPIWrapper());
         event.add("SkillExperience", new ExperienceAPIWrapper());

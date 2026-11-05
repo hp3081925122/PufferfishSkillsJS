@@ -76,7 +76,8 @@ let remaining = RepeatableSkills.getRemainingRepeats(player, 'puffish_skills:com
 
 ```javascript
 // 设置重复次数
-RepeatableSkills.setRepeatCount(player, 'puffish_skills:combat', 'rage_stack', 3)
+// 只对已解锁的可重复技能生效，返回是否修改成功；修改后会自动刷新奖励和点数
+let changed = RepeatableSkills.setRepeatCount(player, 'puffish_skills:combat', 'rage_stack', 3)
 
 // 清除单个技能的重复数据
 RepeatableSkills.clearRepeatData(player, 'puffish_skills:combat', 'rage_stack')
