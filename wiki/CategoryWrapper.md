@@ -16,7 +16,7 @@ let category = categories[0]
 ## 基本信息
 
 ```javascript
-// 获取分类 ID（ResourceLocation）
+// 获取分类 ID（Identifier）
 let id = category.getId()
 
 // 获取分类 ID 字符串

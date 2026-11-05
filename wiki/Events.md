@@ -11,7 +11,7 @@ PufferfishSkillsJS 提供了完整的事件系统，让你可以监听和响应�
 ```javascript
 PufferfishSkillsEvents.skillUnlock(event => {
     let player = event.getPlayer()           // ServerPlayer 对象
-    let categoryId = event.getCategoryId()   // ResourceLocation
+    let categoryId = event.getCategoryId()   // Identifier
     let skillId = event.getSkillId()         // String
     
     // 示例：给解锁技能的玩家奖励
@@ -81,7 +81,7 @@ PufferfishSkillsEvents.categoryLock(event => {
 | 方法 | 返回类型 | 描述 |
 |------|----------|------|
 | `getPlayer()` | ServerPlayer | 获取触发事件的玩家 |
-| `getCategoryId()` | ResourceLocation | 获取分类的 ID |
+| `getCategoryId()` | Identifier | 获取分类的 ID |
 
 ## 实际应用示例
 

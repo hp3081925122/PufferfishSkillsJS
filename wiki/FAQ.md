@@ -7,10 +7,10 @@
 ### Q: PufferfishSkillsJS 需要哪些依赖？
 
 A: 需要以下模组：
-- Minecraft 1.21.1
-- NeoForge 21.1.265+
-- KubeJS 2101.7.2-build.381+
-- Pufferfish's Skills 0.19.0+（已验证 0.19.0）
+- Minecraft 26.1.2
+- NeoForge 26.1.2.116+
+- KubeJS 26.1.2-8.0.6+
+- Pufferfish's Skills 0.19.2+
 
 ### Q: 如何确认模组是否正常加载？
 
@@ -64,7 +64,7 @@ ServerEvents.tick(event => {
 })
 ```
 
-### Q: 资源位置（ResourceLocation）是什么格式？
+### Q: 资源位置（Identifier）是什么格式？
 
 A: 通常是 `namespace:path` 格式，例如 `puffish_skills:combat`。
 
