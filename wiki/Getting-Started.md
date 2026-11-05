@@ -7,7 +7,7 @@
 1. 确保已安装以下依赖：
    - Minecraft 26.1.2
    - NeoForge 26.1.2.116+
-   - KubeJS 26.1.2-8.0.6+
+   - KubeJS 26.1.2-8.0.8+
    - Pufferfish's Skills 0.19.2+
 
 2. 将 PufferfishSkillsJS 模组文件放入 `mods` 文件夹

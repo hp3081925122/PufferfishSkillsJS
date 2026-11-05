@@ -70,7 +70,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
     implementation "curse.maven:puffish-skills-835091:9101394"
-    implementation "dev.latvian.mods:kubejs-neoforge:26.1.2-8.0.6"
+    implementation "dev.latvian.mods:kubejs-neoforge:26.1.2-8.0.8"
     implementation "dev.latvian.mods:rhino:2101.2.8-build.91"
     implementation "net.neoforged:neoforge:${project.neo_version}"
     runtimeOnly "curse.maven:jei-238222:8771077"
