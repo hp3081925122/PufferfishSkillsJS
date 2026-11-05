@@ -11,7 +11,7 @@ import com.hp.skilljs.reward.RewardUpdateContexts;
 import com.hp.skilljs.unlockable.UnlockableSkillData;
 import com.hp.skilljs.unlockable.UnlockableSkillSupport;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.SkillsMod;
 import net.puffish.skillsmod.api.Skill;
@@ -45,7 +45,7 @@ import java.util.function.Predicate;
 @Mixin(value = SkillsMod.class, remap = false)
 public abstract class SkillsModMixin {
     @Shadow
-    protected abstract Optional<CategoryConfig> getCategory(ResourceLocation categoryId);
+    protected abstract Optional<CategoryConfig> getCategory(Identifier categoryId);
 
     @Shadow
     protected abstract PlayerData getPlayerData(ServerPlayer player);
@@ -189,7 +189,7 @@ public abstract class SkillsModMixin {
     }
 
     @Inject(method = "tryUnlockSkill", at = @At("HEAD"), cancellable = true, remap = false)
-    private void onTryUnlockSkill(ServerPlayer player, ResourceLocation categoryId, String skillId, boolean force, CallbackInfo ci) {
+    private void onTryUnlockSkill(ServerPlayer player, Identifier categoryId, String skillId, boolean force, CallbackInfo ci) {
         Optional<CategoryConfig> optCategoryConfig = this.getCategory(categoryId);
         if (optCategoryConfig.isEmpty()) {
             return;
@@ -256,12 +256,12 @@ public abstract class SkillsModMixin {
     }
 
     @Inject(
-        method = "getSkillState(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/ResourceLocation;Ljava/lang/String;)Ljava/util/Optional;",
+        method = "getSkillState(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/Identifier;Ljava/lang/String;)Ljava/util/Optional;",
         at = @At("RETURN"),
         cancellable = true,
         remap = false
     )
-    private void onGetSkillState(ServerPlayer player, ResourceLocation categoryId, String skillId, CallbackInfoReturnable<Optional<Skill.State>> cir) {
+    private void onGetSkillState(ServerPlayer player, Identifier categoryId, String skillId, CallbackInfoReturnable<Optional<Skill.State>> cir) {
         Optional<Skill.State> original = cir.getReturnValue();
         if (original == null || original.isEmpty()) {
             return;
@@ -295,27 +295,27 @@ public abstract class SkillsModMixin {
     }
 
     @Inject(method = "unlockCategory", at = @At("TAIL"), remap = false)
-    private void onCategoryUnlock(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
+    private void onCategoryUnlock(ServerPlayer player, Identifier categoryId, CallbackInfo ci) {
         PufferfishSkillsKubeJSPlugin.CATEGORY_UNLOCK.post(new CategoryUnlockEventJS(player, categoryId));
     }
 
     @Inject(method = "lockCategory", at = @At("TAIL"), remap = false)
-    private void onCategoryLock(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
+    private void onCategoryLock(ServerPlayer player, Identifier categoryId, CallbackInfo ci) {
         UnlockableSkillSupport.clearCategory(player, categoryId);
         RepeatableSkillSupport.clearRepeatableState(player, categoryId);
         PufferfishSkillsKubeJSPlugin.CATEGORY_LOCK.post(new CategoryLockEventJS(player, categoryId));
     }
 
-    @Inject(method = "resetSkills(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/ResourceLocation;)V", at = @At("TAIL"), remap = false)
-    private void onResetSkills(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
+    @Inject(method = "resetSkills(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/Identifier;)V", at = @At("TAIL"), remap = false)
+    private void onResetSkills(ServerPlayer player, Identifier categoryId, CallbackInfo ci) {
         UnlockableSkillSupport.clearCategory(player, categoryId);
         RepeatableSkillData.clearCategory(player, categoryId);
         RepeatableSkillSupport.syncPoints(player, categoryId);
         RepeatableSkillSupport.syncRepeatableState(player, categoryId);
     }
 
-    @Inject(method = "eraseCategory(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/ResourceLocation;)V", at = @At("TAIL"), remap = false)
-    private void onEraseCategory(ServerPlayer player, ResourceLocation categoryId, CallbackInfo ci) {
+    @Inject(method = "eraseCategory(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/resources/Identifier;)V", at = @At("TAIL"), remap = false)
+    private void onEraseCategory(ServerPlayer player, Identifier categoryId, CallbackInfo ci) {
         UnlockableSkillSupport.clearCategory(player, categoryId);
         RepeatableSkillData.clearCategory(player, categoryId);
         RepeatableSkillSupport.clearRepeatableState(player, categoryId);

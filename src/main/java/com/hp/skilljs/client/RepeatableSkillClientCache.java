@@ -1,18 +1,18 @@
 package com.hp.skilljs.client;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class RepeatableSkillClientCache {
-    private static final Map<ResourceLocation, Map<String, Entry>> CATEGORY_ENTRIES = new ConcurrentHashMap<>();
+    private static final Map<Identifier, Map<String, Entry>> CATEGORY_ENTRIES = new ConcurrentHashMap<>();
 
     private RepeatableSkillClientCache() {
     }
 
-    public static void syncCategory(ResourceLocation categoryId, Map<String, Entry> entries) {
+    public static void syncCategory(Identifier categoryId, Map<String, Entry> entries) {
         CATEGORY_ENTRIES.remove(categoryId);
         if (entries.isEmpty()) {
             return;
@@ -21,7 +21,7 @@ public final class RepeatableSkillClientCache {
         CATEGORY_ENTRIES.put(categoryId, new ConcurrentHashMap<>(new LinkedHashMap<>(entries)));
     }
 
-    public static Entry get(ResourceLocation categoryId, String skillId) {
+    public static Entry get(Identifier categoryId, String skillId) {
         return CATEGORY_ENTRIES.getOrDefault(categoryId, Map.of()).get(skillId);
     }
 

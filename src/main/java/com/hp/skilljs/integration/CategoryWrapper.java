@@ -2,7 +2,7 @@ package com.hp.skilljs.integration;
 
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.api.Category;
 import net.puffish.skillsmod.api.Skill;
@@ -20,11 +20,11 @@ public class CategoryWrapper {
         this.category = category;
     }
 
-    private ResourceLocation parseResourceLocation(String value) {
-        return Objects.requireNonNull(ResourceLocation.tryParse(value), () -> "Invalid resource location: " + value);
+    private Identifier parseResourceLocation(String value) {
+        return Objects.requireNonNull(Identifier.tryParse(value), () -> "Invalid resource location: " + value);
     }
 
-    public ResourceLocation getId() {
+    public Identifier getId() {
         return category.getId();
     }
 
@@ -154,7 +154,7 @@ public class CategoryWrapper {
         category.addPointsSilently(player, parseResourceLocation(source), count);
     }
 
-    public List<ResourceLocation> getPointsSources(ServerPlayer player) {
+    public List<Identifier> getPointsSources(ServerPlayer player) {
         return category.streamPointsSources(player).collect(Collectors.toList());
     }
 
@@ -224,7 +224,7 @@ public class CategoryWrapper {
         summary.put("skillIds", getSkillIds());
         summary.put("unlockedSkillIds", getUnlockedSkillIds(player));
         summary.put("skillStates", getSkillStates(player));
-        summary.put("pointsSources", getPointsSources(player).stream().map(ResourceLocation::toString).collect(Collectors.toList()));
+        summary.put("pointsSources", getPointsSources(player).stream().map(Identifier::toString).collect(Collectors.toList()));
         return summary;
     }
 

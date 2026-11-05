@@ -2,7 +2,7 @@ package com.hp.skilljs.network;
 
 import com.hp.skilljs.client.RepeatableSkillClientCache;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
@@ -10,8 +10,8 @@ import net.minecraft.network.codec.StreamCodec;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public record RepeatableSkillSyncPacket(ResourceLocation categoryId, Map<String, RepeatableSkillClientCache.Entry> entries) implements CustomPacketPayload {
-    public static final Type<RepeatableSkillSyncPacket> TYPE = new Type<>(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("pufferfishskillsjs", "repeatable_sync"));
+public record RepeatableSkillSyncPacket(Identifier categoryId, Map<String, RepeatableSkillClientCache.Entry> entries) implements CustomPacketPayload {
+    public static final Type<RepeatableSkillSyncPacket> TYPE = new Type<>(net.minecraft.resources.Identifier.fromNamespaceAndPath("pufferfishskillsjs", "repeatable_sync"));
     public static final StreamCodec<FriendlyByteBuf, RepeatableSkillSyncPacket> STREAM_CODEC = StreamCodec.of((buffer, packet) -> encode(packet, buffer), RepeatableSkillSyncPacket::decode);
 
     @Override
@@ -20,7 +20,7 @@ public record RepeatableSkillSyncPacket(ResourceLocation categoryId, Map<String,
     }
 
     public static void encode(RepeatableSkillSyncPacket packet, FriendlyByteBuf buffer) {
-        buffer.writeResourceLocation(packet.categoryId);
+        buffer.writeIdentifier(packet.categoryId);
         buffer.writeVarInt(packet.entries.size());
         packet.entries.forEach((skillId, entry) -> {
             buffer.writeUtf(skillId);
@@ -31,7 +31,7 @@ public record RepeatableSkillSyncPacket(ResourceLocation categoryId, Map<String,
     }
 
     public static RepeatableSkillSyncPacket decode(FriendlyByteBuf buffer) {
-        ResourceLocation categoryId = buffer.readResourceLocation();
+        Identifier categoryId = buffer.readIdentifier();
         int size = buffer.readVarInt();
         Map<String, RepeatableSkillClientCache.Entry> entries = new LinkedHashMap<>();
         for (int i = 0; i < size; i++) {

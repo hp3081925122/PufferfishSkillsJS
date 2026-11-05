@@ -3,14 +3,14 @@ package com.hp.skilljs.integration;
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import com.hp.skilljs.repeatable.SkillType;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Objects;
 
 public class RepeatableSkillAPIWrapper {
-    private ResourceLocation parseResourceLocation(String value) {
-        return Objects.requireNonNull(ResourceLocation.tryParse(value), () -> "Invalid resource location: " + value);
+    private Identifier parseResourceLocation(String value) {
+        return Objects.requireNonNull(Identifier.tryParse(value), () -> "Invalid resource location: " + value);
     }
 
     public void setSkillType(String categoryId, String skillId, String typeName) {
@@ -22,7 +22,7 @@ public class RepeatableSkillAPIWrapper {
     }
 
     public void setRepeatable(String categoryId, String skillId, boolean repeatable, int limit) {
-        ResourceLocation categoryKey = parseResourceLocation(categoryId);
+        Identifier categoryKey = parseResourceLocation(categoryId);
         SkillTypeRegistry.setSkillType(categoryKey, skillId, repeatable ? SkillType.REPEATABLE : SkillType.NORMAL);
         SkillTypeRegistry.setRepeatLimit(categoryKey, skillId, repeatable ? limit : 0);
     }
@@ -64,7 +64,7 @@ public class RepeatableSkillAPIWrapper {
      * @return 是否已修改
      */
     public boolean setRepeatCount(ServerPlayer player, String categoryId, String skillId, int count) {
-        ResourceLocation categoryKey = parseResourceLocation(categoryId);
+        Identifier categoryKey = parseResourceLocation(categoryId);
         if (count > 0 && (!SkillTypeRegistry.isRepeatable(categoryKey, skillId)
             || !RepeatableSkillSupport.isSkillUnlocked(player, categoryKey, skillId))) {
             return false;
@@ -76,21 +76,21 @@ public class RepeatableSkillAPIWrapper {
     }
 
     public void clearRepeatData(ServerPlayer player, String categoryId, String skillId) {
-        ResourceLocation categoryKey = parseResourceLocation(categoryId);
+        Identifier categoryKey = parseResourceLocation(categoryId);
         RepeatableSkillData.clearSkill(player, categoryKey, skillId);
         RepeatableSkillSupport.refresh(player, categoryKey);
     }
 
     public void clearCategoryData(ServerPlayer player, String categoryId) {
-        ResourceLocation categoryKey = parseResourceLocation(categoryId);
+        Identifier categoryKey = parseResourceLocation(categoryId);
         RepeatableSkillData.clearCategory(player, categoryKey);
         RepeatableSkillSupport.refresh(player, categoryKey);
     }
 
     public void clearAllData(ServerPlayer player) {
-        Iterable<ResourceLocation> categoryIds = RepeatableSkillData.getCategoryIds(player);
+        Iterable<Identifier> categoryIds = RepeatableSkillData.getCategoryIds(player);
         RepeatableSkillData.clearAll(player);
-        for (ResourceLocation categoryId : categoryIds) {
+        for (Identifier categoryId : categoryIds) {
             RepeatableSkillSupport.refresh(player, categoryId);
         }
     }

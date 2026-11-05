@@ -1,6 +1,6 @@
 package com.hp.skilljs.integration;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.api.Category;
 import net.puffish.skillsmod.api.Experience;
@@ -10,8 +10,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class ExperienceAPIWrapper {
-    private ResourceLocation parseResourceLocation(String value) {
-        return Objects.requireNonNull(ResourceLocation.tryParse(value), () -> "Invalid resource location: " + value);
+    private Identifier parseResourceLocation(String value) {
+        return Objects.requireNonNull(Identifier.tryParse(value), () -> "Invalid resource location: " + value);
     }
 
     public Optional<Experience> getExperience(String categoryId) {

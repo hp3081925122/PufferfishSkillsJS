@@ -2,7 +2,7 @@ package com.hp.skilljs.unlockable;
 
 import com.hp.skilljs.PufferfishSkillsJSMod;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.HashMap;
@@ -15,29 +15,29 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class UnlockableSkillData {
     private static final String ROOT_KEY = "pufferfishskillsjs_unlockable";
     private static final String SKILLS_KEY = "skills";
-    private static final Map<UUID, Map<ResourceLocation, Set<String>>> PLAYER_SKILLS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Map<Identifier, Set<String>>> PLAYER_SKILLS = new ConcurrentHashMap<>();
 
     private UnlockableSkillData() {
     }
 
-    private static Map<ResourceLocation, Set<String>> getPlayerMap(ServerPlayer player) {
+    private static Map<Identifier, Set<String>> getPlayerMap(ServerPlayer player) {
         return PLAYER_SKILLS.computeIfAbsent(player.getUUID(), id -> new ConcurrentHashMap<>());
     }
 
-    private static Set<String> getCategorySet(ServerPlayer player, ResourceLocation categoryId) {
+    private static Set<String> getCategorySet(ServerPlayer player, Identifier categoryId) {
         return getPlayerMap(player).computeIfAbsent(categoryId, id -> ConcurrentHashMap.newKeySet());
     }
 
-    public static boolean allow(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+    public static boolean allow(ServerPlayer player, Identifier categoryId, String skillId) {
         boolean changed = getCategorySet(player, categoryId).add(skillId);
         if (changed) {
-            PufferfishSkillsJSMod.LOGGER.debug("Allowed skill unlock player={} category={} skill={}", player.getGameProfile().getName(), categoryId, skillId);
+            PufferfishSkillsJSMod.LOGGER.debug("Allowed skill unlock player={} category={} skill={}", player.getGameProfile().name(), categoryId, skillId);
         }
         return changed;
     }
 
-    public static boolean disallow(ServerPlayer player, ResourceLocation categoryId, String skillId) {
-        Map<ResourceLocation, Set<String>> playerMap = getPlayerMap(player);
+    public static boolean disallow(ServerPlayer player, Identifier categoryId, String skillId) {
+        Map<Identifier, Set<String>> playerMap = getPlayerMap(player);
         Set<String> skills = playerMap.get(categoryId);
         if (skills == null) {
             return false;
@@ -50,19 +50,19 @@ public final class UnlockableSkillData {
         return removed;
     }
 
-    public static boolean isAllowed(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+    public static boolean isAllowed(ServerPlayer player, Identifier categoryId, String skillId) {
         return getPlayerMap(player).getOrDefault(categoryId, Set.of()).contains(skillId);
     }
 
-    public static Set<String> getAllowedSkills(ServerPlayer player, ResourceLocation categoryId) {
+    public static Set<String> getAllowedSkills(ServerPlayer player, Identifier categoryId) {
         return new HashSet<>(getPlayerMap(player).getOrDefault(categoryId, Set.of()));
     }
 
-    public static void clearSkill(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+    public static void clearSkill(ServerPlayer player, Identifier categoryId, String skillId) {
         disallow(player, categoryId, skillId);
     }
 
-    public static void clearCategory(ServerPlayer player, ResourceLocation categoryId) {
+    public static void clearCategory(ServerPlayer player, Identifier categoryId) {
         getPlayerMap(player).remove(categoryId);
     }
 
@@ -76,7 +76,7 @@ public final class UnlockableSkillData {
 
     public static CompoundTag writeToTag(ServerPlayer player, CompoundTag targetTag) {
         CompoundTag rootTag = new CompoundTag();
-        for (Map.Entry<ResourceLocation, Set<String>> categoryEntry : getPlayerMap(player).entrySet()) {
+        for (Map.Entry<Identifier, Set<String>> categoryEntry : getPlayerMap(player).entrySet()) {
             CompoundTag skillsTag = new CompoundTag();
             for (String skillId : categoryEntry.getValue()) {
                 skillsTag.putBoolean(skillId, true);
@@ -100,27 +100,27 @@ public final class UnlockableSkillData {
 
     public static void readFromTag(ServerPlayer player, CompoundTag sourceTag) {
         clearAll(player);
-        if (!sourceTag.contains(ROOT_KEY, 10)) {
+        if (sourceTag.getCompound(ROOT_KEY).isEmpty()) {
             return;
         }
 
-        Map<ResourceLocation, Set<String>> playerMap = new HashMap<>();
-        CompoundTag rootTag = sourceTag.getCompound(ROOT_KEY);
-        for (String categoryKey : rootTag.getAllKeys()) {
-            ResourceLocation categoryId = ResourceLocation.tryParse(categoryKey);
+        Map<Identifier, Set<String>> playerMap = new HashMap<>();
+        CompoundTag rootTag = sourceTag.getCompoundOrEmpty(ROOT_KEY);
+        for (String categoryKey : rootTag.keySet()) {
+            Identifier categoryId = Identifier.tryParse(categoryKey);
             if (categoryId == null) {
                 continue;
             }
 
-            CompoundTag categoryTag = rootTag.getCompound(categoryKey);
-            if (!categoryTag.contains(SKILLS_KEY, 10)) {
+            CompoundTag categoryTag = rootTag.getCompoundOrEmpty(categoryKey);
+            if (categoryTag.getCompound(SKILLS_KEY).isEmpty()) {
                 continue;
             }
 
             Set<String> skills = ConcurrentHashMap.newKeySet();
-            CompoundTag skillsTag = categoryTag.getCompound(SKILLS_KEY);
-            for (String skillId : skillsTag.getAllKeys()) {
-                if (skillsTag.getBoolean(skillId)) {
+            CompoundTag skillsTag = categoryTag.getCompoundOrEmpty(SKILLS_KEY);
+            for (String skillId : skillsTag.keySet()) {
+                if (skillsTag.getBooleanOr(skillId, false)) {
                     skills.add(skillId);
                 }
             }

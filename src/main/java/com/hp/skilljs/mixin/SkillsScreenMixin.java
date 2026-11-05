@@ -2,7 +2,8 @@ package com.hp.skilljs.mixin;
 
 import com.hp.skilljs.client.RepeatableSkillClientCache;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.ComponentUtils;
@@ -48,9 +49,10 @@ public abstract class SkillsScreenMixin extends Screen {
         at = @At("TAIL")
     )
     private void onAppendRepeatableSkillTooltip(
-        GuiGraphics guiGraphics,
-        double mouseX,
-        double mouseY,
+        GuiGraphicsExtractor guiGraphics,
+        int mouseX,
+        int mouseY,
+        ScreenRectangle scissorArea,
         ClientCategoryData categoryData,
         CallbackInfo ci
     ) {
@@ -90,7 +92,7 @@ public abstract class SkillsScreenMixin extends Screen {
         ArrayList<FormattedCharSequence> tooltipLines = new ArrayList<>();
         tooltipLines.add(definition.title().getVisualOrderText());
         tooltipLines.addAll(Tooltip.splitTooltip(this.minecraft, ComponentUtils.mergeStyles(definition.description().copy(), Style.EMPTY.applyFormat(ChatFormatting.GRAY))));
-        if (Screen.hasShiftDown()) {
+        if (this.minecraft.hasShiftDown()) {
             tooltipLines.addAll(Tooltip.splitTooltip(this.minecraft, ComponentUtils.mergeStyles(definition.extraDescription().copy(), Style.EMPTY.applyFormat(ChatFormatting.GRAY))));
         }
 
@@ -109,7 +111,7 @@ public abstract class SkillsScreenMixin extends Screen {
             tooltipLines.add(this.skilljs$tooltipLine(Component.translatable("tooltip.pufferfishskillsjs.repeatable.remaining.limited", remainingRepeats), ChatFormatting.AQUA));
         }
 
-        this.setTooltipForNextRenderPass(tooltipLines);
+        guiGraphics.setTooltipForNextFrame(tooltipLines, mouseX, mouseY);
     }
 
     @Unique

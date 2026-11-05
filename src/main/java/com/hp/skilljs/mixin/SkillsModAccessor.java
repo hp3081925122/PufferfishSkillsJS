@@ -1,6 +1,6 @@
 package com.hp.skilljs.mixin;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.SkillsMod;
 import net.puffish.skillsmod.config.CategoryConfig;
@@ -15,7 +15,7 @@ import java.util.Optional;
 @Mixin(value = SkillsMod.class, remap = false)
 public interface SkillsModAccessor {
     @Invoker("getCategory")
-    Optional<CategoryConfig> skilljs$invokeGetCategory(ResourceLocation categoryId);
+    Optional<CategoryConfig> skilljs$invokeGetCategory(Identifier categoryId);
 
     @Invoker("getPlayerData")
     PlayerData skilljs$invokeGetPlayerData(ServerPlayer player);

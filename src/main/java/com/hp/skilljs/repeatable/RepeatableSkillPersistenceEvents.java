@@ -37,7 +37,7 @@ public final class RepeatableSkillPersistenceEvents {
 
         try {
             NbtIo.writeCompressed(tag, file.toPath());
-            PufferfishSkillsJSMod.LOGGER.debug("Saved PufferfishSkillsJS player data player={} roots={}", serverPlayer.getGameProfile().getName(), tag.getAllKeys());
+            PufferfishSkillsJSMod.LOGGER.debug("Saved PufferfishSkillsJS player data player={} roots={}", serverPlayer.getGameProfile().name(), tag.keySet());
         } catch (IOException exception) {
             PufferfishSkillsJSMod.LOGGER.error("保存可重复技能数据失败", exception);
         }
@@ -54,7 +54,7 @@ public final class RepeatableSkillPersistenceEvents {
         if (!file.isFile()) {
             RepeatableSkillData.clearAll(serverPlayer);
             UnlockableSkillData.clearAll(serverPlayer);
-            PufferfishSkillsJSMod.LOGGER.debug("Cleared PufferfishSkillsJS player data without save file player={}", serverPlayer.getGameProfile().getName());
+            PufferfishSkillsJSMod.LOGGER.debug("Cleared PufferfishSkillsJS player data without save file player={}", serverPlayer.getGameProfile().name());
             return;
         }
 
@@ -62,7 +62,7 @@ public final class RepeatableSkillPersistenceEvents {
             CompoundTag tag = NbtIo.readCompressed(file.toPath(), net.minecraft.nbt.NbtAccounter.unlimitedHeap());
             RepeatableSkillData.readFromTag(serverPlayer, tag);
             UnlockableSkillData.readFromTag(serverPlayer, tag);
-            PufferfishSkillsJSMod.LOGGER.debug("Loaded PufferfishSkillsJS player data player={} roots={}", serverPlayer.getGameProfile().getName(), tag.getAllKeys());
+            PufferfishSkillsJSMod.LOGGER.debug("Loaded PufferfishSkillsJS player data player={} roots={}", serverPlayer.getGameProfile().name(), tag.keySet());
         } catch (IOException exception) {
             RepeatableSkillData.clearAll(serverPlayer);
             UnlockableSkillData.clearAll(serverPlayer);

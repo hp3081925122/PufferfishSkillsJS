@@ -3,7 +3,7 @@ package com.hp.skilljs.integration;
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
 import com.hp.skilljs.unlockable.UnlockableSkillSupport;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.api.Category;
 import net.puffish.skillsmod.api.Experience;
@@ -18,8 +18,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class SkillsAPIWrapper {
-    private ResourceLocation parseResourceLocation(String value) {
-        return Objects.requireNonNull(ResourceLocation.tryParse(value), () -> "Invalid resource location: " + value);
+    private Identifier parseResourceLocation(String value) {
+        return Objects.requireNonNull(Identifier.tryParse(value), () -> "Invalid resource location: " + value);
     }
 
     private Optional<Category> resolveCategory(String categoryId) {
@@ -34,7 +34,7 @@ public class SkillsAPIWrapper {
         return resolveCategory(categoryId).map(CategoryWrapper::new);
     }
 
-    public Optional<CategoryWrapper> getCategoryByResourceLocation(ResourceLocation categoryId) {
+    public Optional<CategoryWrapper> getCategoryByResourceLocation(Identifier categoryId) {
         return SkillsAPI.getCategory(categoryId).map(CategoryWrapper::new);
     }
 
@@ -112,7 +112,7 @@ public class SkillsAPIWrapper {
     }
 
     public boolean unlockSkill(ServerPlayer player, String categoryId, String skillId) {
-        ResourceLocation categoryKey = parseResourceLocation(categoryId);
+        Identifier categoryKey = parseResourceLocation(categoryId);
         return resolveCategory(categoryId)
             .flatMap(category -> category.getSkill(skillId))
             .map(skill -> {
@@ -202,7 +202,7 @@ public class SkillsAPIWrapper {
         resolveCategory(categoryId).ifPresent(category -> category.addPointsSilently(player, parseResourceLocation(source), count));
     }
 
-    public List<ResourceLocation> getPointsSources(ServerPlayer player, String categoryId) {
+    public List<Identifier> getPointsSources(ServerPlayer player, String categoryId) {
         return resolveCategory(categoryId)
             .map(category -> category.streamPointsSources(player).collect(Collectors.toList()))
             .orElseGet(List::of);

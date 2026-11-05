@@ -1,7 +1,7 @@
 package com.hp.skilljs.event;
 
 import dev.latvian.mods.kubejs.event.KubeEvent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.api.Category;
 import net.puffish.skillsmod.api.SkillsAPI;
@@ -10,9 +10,9 @@ import java.util.Optional;
 
 public class CategoryLockEventJS implements KubeEvent {
     private final ServerPlayer player;
-    private final ResourceLocation categoryId;
+    private final Identifier categoryId;
 
-    public CategoryLockEventJS(ServerPlayer player, ResourceLocation categoryId) {
+    public CategoryLockEventJS(ServerPlayer player, Identifier categoryId) {
         this.player = player;
         this.categoryId = categoryId;
     }
@@ -21,7 +21,7 @@ public class CategoryLockEventJS implements KubeEvent {
         return player;
     }
 
-    public ResourceLocation getCategoryId() {
+    public Identifier getCategoryId() {
         return categoryId;
     }
 

@@ -5,7 +5,7 @@ import com.hp.skilljs.mixin.SkillsModAccessor;
 import com.hp.skilljs.network.PufferfishSkillsJSNetwork;
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import com.hp.skilljs.repeatable.SkillTypeRegistry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.SkillsMod;
 import net.puffish.skillsmod.config.CategoryConfig;
@@ -22,7 +22,7 @@ public final class RepeatableSkillSupport {
     private RepeatableSkillSupport() {
     }
 
-    public static Optional<CategoryConfig> getCategoryConfig(ResourceLocation categoryId) {
+    public static Optional<CategoryConfig> getCategoryConfig(Identifier categoryId) {
         SkillsMod skillsMod = SkillsMod.getInstance();
         if (skillsMod == null) {
             return Optional.empty();
@@ -31,29 +31,29 @@ public final class RepeatableSkillSupport {
         return ((SkillsModAccessor) skillsMod).skilljs$invokeGetCategory(categoryId);
     }
 
-    public static int getExtraSpentPoints(ServerPlayer player, ResourceLocation categoryId) {
+    public static int getExtraSpentPoints(ServerPlayer player, Identifier categoryId) {
         return getCategoryConfig(categoryId)
             .map(categoryConfig -> RepeatableSkillData.getExtraSpentPoints(player, categoryConfig))
             .orElse(0);
     }
 
-    public static int getEffectiveSpentPoints(ServerPlayer player, ResourceLocation categoryId, int baseSpentPoints) {
+    public static int getEffectiveSpentPoints(ServerPlayer player, Identifier categoryId, int baseSpentPoints) {
         return baseSpentPoints + getExtraSpentPoints(player, categoryId);
     }
 
-    public static int getEffectivePointsLeft(ServerPlayer player, ResourceLocation categoryId, int basePointsLeft) {
+    public static int getEffectivePointsLeft(ServerPlayer player, Identifier categoryId, int basePointsLeft) {
         return basePointsLeft - getExtraSpentPoints(player, categoryId);
     }
 
-    public static int getRepeatLimit(ResourceLocation categoryId, String skillId) {
+    public static int getRepeatLimit(Identifier categoryId, String skillId) {
         return SkillTypeRegistry.getRepeatLimit(categoryId, skillId);
     }
 
-    public static boolean hasRepeatLimit(ResourceLocation categoryId, String skillId) {
+    public static boolean hasRepeatLimit(Identifier categoryId, String skillId) {
         return SkillTypeRegistry.hasRepeatLimit(categoryId, skillId);
     }
 
-    public static boolean tryRepeatUnlock(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+    public static boolean tryRepeatUnlock(ServerPlayer player, Identifier categoryId, String skillId) {
         SkillsMod skillsMod = SkillsMod.getInstance();
         if (skillsMod == null) {
             return false;
@@ -70,7 +70,7 @@ public final class RepeatableSkillSupport {
         return after > before;
     }
 
-    public static void syncPoints(ServerPlayer player, ResourceLocation categoryId) {
+    public static void syncPoints(ServerPlayer player, Identifier categoryId) {
         SkillsMod skillsMod = SkillsMod.getInstance();
         if (skillsMod == null) {
             return;
@@ -115,7 +115,7 @@ public final class RepeatableSkillSupport {
         PufferfishSkillsJSNetwork.syncCategory(player, categoryConfig.id(), entries);
     }
 
-    public static boolean isSkillUnlocked(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+    public static boolean isSkillUnlocked(ServerPlayer player, Identifier categoryId, String skillId) {
         SkillsMod skillsMod = SkillsMod.getInstance();
         if (skillsMod == null) {
             return false;
@@ -134,7 +134,7 @@ public final class RepeatableSkillSupport {
     /**
      * 重复次数被脚本直接修改后，同步点数、客户端显示，并重新计算奖励。
      */
-    public static void refresh(ServerPlayer player, ResourceLocation categoryId) {
+    public static void refresh(ServerPlayer player, Identifier categoryId) {
         syncPoints(player, categoryId);
         syncRepeatableState(player, categoryId);
         SkillsMod skillsMod = SkillsMod.getInstance();
@@ -143,11 +143,11 @@ public final class RepeatableSkillSupport {
         }
     }
 
-    public static void syncRepeatableState(ServerPlayer player, ResourceLocation categoryId) {
+    public static void syncRepeatableState(ServerPlayer player, Identifier categoryId) {
         getCategoryConfig(categoryId).ifPresent(categoryConfig -> syncRepeatableState(player, categoryConfig));
     }
 
-    public static void clearRepeatableState(ServerPlayer player, ResourceLocation categoryId) {
+    public static void clearRepeatableState(ServerPlayer player, Identifier categoryId) {
         PufferfishSkillsJSNetwork.syncCategory(player, categoryId, Map.of());
     }
 }

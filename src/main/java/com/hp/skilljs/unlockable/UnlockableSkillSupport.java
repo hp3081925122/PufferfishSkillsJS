@@ -2,7 +2,7 @@ package com.hp.skilljs.unlockable;
 
 import com.hp.skilljs.mixin.SkillsModAccessor;
 import com.hp.skilljs.network.PufferfishSkillsJSNetwork;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import com.hp.skilljs.repeatable.RepeatableSkillData;
 import net.minecraft.server.level.ServerPlayer;
 import net.puffish.skillsmod.SkillsMod;
@@ -20,7 +20,7 @@ public final class UnlockableSkillSupport {
     private UnlockableSkillSupport() {
     }
 
-    public static boolean allowSkillUnlock(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+    public static boolean allowSkillUnlock(ServerPlayer player, Identifier categoryId, String skillId) {
         Optional<CategoryConfig> categoryConfig = getCategoryConfig(categoryId);
         if (categoryConfig.isEmpty() || categoryConfig.get().skills().getById(skillId).isEmpty()) {
             return false;
@@ -31,7 +31,7 @@ public final class UnlockableSkillSupport {
         return changed;
     }
 
-    public static boolean disallowSkillUnlock(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+    public static boolean disallowSkillUnlock(ServerPlayer player, Identifier categoryId, String skillId) {
         boolean changed = UnlockableSkillData.disallow(player, categoryId, skillId);
         syncCategory(player, categoryId);
         return changed;
@@ -66,21 +66,21 @@ public final class UnlockableSkillSupport {
             && RepeatableSkillData.getEffectiveSpentPoints(player, categoryConfig, categoryData) >= definition.requiredSpentPoints();
     }
 
-    public static void syncCategory(ServerPlayer player, ResourceLocation categoryId) {
+    public static void syncCategory(ServerPlayer player, Identifier categoryId) {
         PufferfishSkillsJSNetwork.syncUnlockableCategory(player, categoryId, UnlockableSkillData.getAllowedSkills(player, categoryId));
     }
 
-    public static void clearSkill(ServerPlayer player, ResourceLocation categoryId, String skillId) {
+    public static void clearSkill(ServerPlayer player, Identifier categoryId, String skillId) {
         UnlockableSkillData.clearSkill(player, categoryId, skillId);
         syncCategory(player, categoryId);
     }
 
-    public static void clearCategory(ServerPlayer player, ResourceLocation categoryId) {
+    public static void clearCategory(ServerPlayer player, Identifier categoryId) {
         UnlockableSkillData.clearCategory(player, categoryId);
         PufferfishSkillsJSNetwork.syncUnlockableCategory(player, categoryId, Set.of());
     }
 
-    private static Optional<CategoryConfig> getCategoryConfig(ResourceLocation categoryId) {
+    private static Optional<CategoryConfig> getCategoryConfig(Identifier categoryId) {
         SkillsMod skillsMod = SkillsMod.getInstance();
         if (skillsMod == null) {
             return Optional.empty();

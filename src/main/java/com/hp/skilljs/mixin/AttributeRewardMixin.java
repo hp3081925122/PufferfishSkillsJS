@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.Holder;
 
 @Mixin(value = AttributeReward.class, remap = false)
@@ -29,7 +29,7 @@ public abstract class AttributeRewardMixin {
 
     @Shadow
     @Final
-    private List<ResourceLocation> ids;
+    private List<Identifier> ids;
 
     @Shadow
     @Final
@@ -52,10 +52,10 @@ public abstract class AttributeRewardMixin {
         ServerPlayer player = context.getPlayer();
         AttributeInstance attributeInstance = Objects.requireNonNull(player.getAttribute(this.attribute));
         String modifierName = null;
-        ResourceLocation uuid = null;
+        Identifier uuid = null;
         if (context instanceof RewardUpdateContextMetadata metadata && metadata.skilljs$getRewardKey() != null) {
             modifierName = skilljs$modifierNamePrefix + metadata.skilljs$getRewardKey();
-            uuid = ResourceLocation.fromNamespaceAndPath("pufferfishskillsjs", "attribute/" + java.util.UUID.nameUUIDFromBytes(modifierName.getBytes(StandardCharsets.UTF_8)));
+            uuid = Identifier.fromNamespaceAndPath("pufferfishskillsjs", "attribute/" + java.util.UUID.nameUUIDFromBytes(modifierName.getBytes(StandardCharsets.UTF_8)));
         }
 
         if (!PufferfishSkillsJSConfig.COMPRESS_ATTRIBUTE_REWARDS.get()) {
@@ -95,7 +95,7 @@ public abstract class AttributeRewardMixin {
 
     @Unique
     private void skilljs$removeTrackedModifiers(AttributeInstance attributeInstance) {
-        for (ResourceLocation existingUuid : this.ids) {
+        for (Identifier existingUuid : this.ids) {
             if (attributeInstance.getModifier(existingUuid) != null) {
                 attributeInstance.removeModifier(existingUuid);
             }

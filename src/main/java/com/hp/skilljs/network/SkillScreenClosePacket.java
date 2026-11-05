@@ -10,7 +10,7 @@ import net.minecraft.network.codec.StreamCodec;
 
 
 public record SkillScreenClosePacket() implements CustomPacketPayload {
-    public static final Type<SkillScreenClosePacket> TYPE = new Type<>(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("pufferfishskillsjs", "screen_close"));
+    public static final Type<SkillScreenClosePacket> TYPE = new Type<>(net.minecraft.resources.Identifier.fromNamespaceAndPath("pufferfishskillsjs", "screen_close"));
     public static final StreamCodec<FriendlyByteBuf, SkillScreenClosePacket> STREAM_CODEC = StreamCodec.of((buffer, packet) -> encode(packet, buffer), SkillScreenClosePacket::decode);
 
     @Override

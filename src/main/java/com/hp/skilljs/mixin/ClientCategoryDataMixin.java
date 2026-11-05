@@ -2,7 +2,7 @@ package com.hp.skilljs.mixin;
 
 import com.hp.skilljs.client.RepeatableSkillClientCache;
 import com.hp.skilljs.client.UnlockableSkillClientCache;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.puffish.skillsmod.api.Skill;
 import net.puffish.skillsmod.client.config.ClientCategoryConfig;
 import net.puffish.skillsmod.client.config.skill.ClientSkillConfig;
@@ -28,7 +28,7 @@ public abstract class ClientCategoryDataMixin {
     )
     private void skilljs$onGetSkillState(ClientSkillConfig skillConfig, CallbackInfoReturnable<Skill.State> cir) {
         Skill.State state = cir.getReturnValue();
-        ResourceLocation categoryId = this.getConfig().id();
+        Identifier categoryId = this.getConfig().id();
         if (state == Skill.State.LOCKED && UnlockableSkillClientCache.isAllowed(categoryId, skillConfig.id())) {
             cir.setReturnValue(Skill.State.AVAILABLE);
             return;
